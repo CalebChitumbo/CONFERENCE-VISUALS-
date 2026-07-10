@@ -78,21 +78,35 @@ img { max-width:100%; }
 .mist { position:absolute; border-radius:50%; filter: blur(70px); pointer-events:none; }
 .mist.m1 {
   width:1300px; height:700px; left:-250px; bottom:-420px;
-  background: radial-gradient(ellipse, rgba(168,181,189,.13), transparent 65%);
+  background: radial-gradient(ellipse, rgba(168,181,189,.17), transparent 65%);
   animation: drift1 38s ease-in-out infinite alternate;
 }
 .mist.m2 {
   width:1100px; height:620px; right:-300px; bottom:-380px;
-  background: radial-gradient(ellipse, rgba(247,244,236,.08), transparent 65%);
+  background: radial-gradient(ellipse, rgba(247,244,236,.11), transparent 65%);
   animation: drift2 46s ease-in-out infinite alternate;
 }
 .mist.m3 {
   width:900px; height:400px; left:30%; top:-320px;
-  background: radial-gradient(ellipse, rgba(201,162,39,.05), transparent 70%);
+  background: radial-gradient(ellipse, rgba(201,162,39,.07), transparent 70%);
   animation: drift1 52s ease-in-out infinite alternate-reverse;
 }
 @keyframes drift1 { from { transform: translateX(0) translateY(0);}   to { transform: translateX(160px) translateY(-40px);} }
 @keyframes drift2 { from { transform: translateX(0) translateY(0);}   to { transform: translateX(-140px) translateY(-60px);} }
+
+/* Falls spray — tiny droplets rising continuously behind every scene */
+.spray { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.spray i {
+  position:absolute; bottom:-24px; border-radius:50%;
+  background: rgba(247,244,236,.55); filter: blur(1px);
+  animation: sprayRise linear infinite;
+}
+@keyframes sprayRise {
+  0%   { transform: translate(0,0); opacity:0; }
+  10%  { opacity:.16; }
+  55%  { transform: translate(var(--sway,40px), -600px); opacity:.11; }
+  100% { transform: translate(calc(var(--sway,40px) * -0.5), -1180px); opacity:0; }
+}
 
 .vignette {
   position:absolute; inset:0; pointer-events:none;
@@ -114,7 +128,18 @@ img { max-width:100%; }
 .headline  { font-family: var(--font-display); color: var(--pure-white); letter-spacing: .04em; }
 .tagline   { font-family: var(--font-subhead); font-style: italic; color: var(--falls-mist); }
 .label     { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .14em; }
-.gold-rule { height:3px; background: var(--falls-gold); border:0; }
+.gold-rule { height:3px; border:0; background: var(--falls-gold); position:relative; overflow:hidden; }
+.gold-rule::after {                                /* periodic shine sweep */
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(90deg, transparent 0%, var(--falls-gold-highlight) 50%, transparent 100%);
+  background-size: 45% 100%; background-repeat: no-repeat;
+  background-position: -60% 0;
+  animation: ruleShine 7.5s ease-in-out infinite;
+}
+@keyframes ruleShine {
+  0%, 45%   { background-position: -60% 0; }
+  70%, 100% { background-position: 165% 0; }
+}
 
 /* Circular headshot (IAEA-style) */
 .ph {
@@ -143,6 +168,8 @@ img { max-width:100%; }
 .sc-title { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:70px 120px; position:absolute; inset:0; }
 .sc-title .t-logo img, .sc-title .t-logo .logo-fallback { height:295px; }
 .sc-title .t-logo img { width:auto; }
+.sc-title .t-logo > * { animation: breathe 9s ease-in-out infinite alternate; }  /* gentle idle motion */
+@keyframes breathe { from { transform: scale(1); } to { transform: scale(1.028); } }
 .sc-title .t-kicker { font-size:22px; color:var(--falls-mist); margin-top:34px; }
 .sc-title .t-name { font-size:84px; font-weight:600; margin-top:10px; line-height:1.08; }
 .sc-title .t-sub  { font-size:30px; color:var(--falls-mist); font-family:var(--font-display); letter-spacing:.12em; text-transform:uppercase; margin-top:10px; }
@@ -167,7 +194,12 @@ img { max-width:100%; }
   gap: var(--gapy,34px) 44px; width:100%;
 }
 .g-card { display:flex; flex-direction:column; align-items:center; text-align:center; min-width:0; }
-.g-card .ph { width:var(--ph,200px); height:var(--ph,200px); }
+.g-card .ph {
+  width:var(--ph,200px); height:var(--ph,200px);
+  animation: bob 7s ease-in-out infinite;                 /* photos float gently, out of phase */
+  animation-delay: calc(var(--i,0) * -1.35s);
+}
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 .g-card .ph-init { font-size: calc(var(--ph,200px) * .34); }
 .g-card .c-name { font-family:var(--font-display); color:var(--pure-white); font-weight:600; font-size:var(--nm,26px); margin-top:18px; line-height:1.15; }
 .g-card .c-org  { font-size:calc(var(--nm,26px) * .66); color:var(--falls-mist); margin-top:7px; line-height:1.3; }
@@ -180,7 +212,15 @@ img { max-width:100%; }
 /* ── SCENE: SPOTLIGHT ─────────────────────────────────────────── */
 .sc-spot { position:absolute; inset:0; display:flex; align-items:center; padding:80px 110px; gap:96px; }
 .sc-spot .s-left { flex:none; display:flex; flex-direction:column; align-items:center; gap:36px; }
-.sc-spot .s-left .ph { width:500px; height:500px; border-width:6px; box-shadow: 0 0 0 14px rgba(201,162,39,.12), 0 30px 70px rgba(0,0,0,.55); }
+.sc-spot .s-left .ph {
+  width:500px; height:500px; border-width:6px;
+  box-shadow: 0 0 0 14px rgba(201,162,39,.12), 0 30px 70px rgba(0,0,0,.55);
+  animation: halo 8s ease-in-out infinite;                /* breathing gold halo */
+}
+@keyframes halo {
+  0%,100% { box-shadow: 0 0 0 14px rgba(201,162,39,.10), 0 30px 70px rgba(0,0,0,.55); }
+  50%     { box-shadow: 0 0 0 24px rgba(201,162,39,.17), 0 34px 80px rgba(0,0,0,.62); }
+}
 .sc-spot .s-left .ph-init { font-size:170px; }
 .sc-spot .s-chip {
   font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.14em; font-size:20px;
@@ -206,7 +246,11 @@ img { max-width:100%; }
 .sc-cd .c-kick { font-size:23px; color:var(--falls-mist); }
 .sc-cd .c-session { font-family:var(--font-display); font-size:52px; font-weight:600; color:var(--pure-white); margin-top:16px; letter-spacing:.04em; }
 .sc-cd .cd { display:flex; align-items:flex-start; justify-content:center; gap:34px; margin-top:44px; }
-.sc-cd .cd-sep { font-family:var(--font-mono); font-size:130px; line-height:1; color:rgba(201,162,39,.5); padding-top:16px; }
+.sc-cd .cd-sep {
+  font-family:var(--font-mono); font-size:130px; line-height:1; color:rgba(201,162,39,.5); padding-top:16px;
+  animation: colonBlink 1s steps(1) infinite;             /* clock-style pulse */
+}
+@keyframes colonBlink { 0%,49% { opacity:1; } 50%,100% { opacity:.3; } }
 .cd-block { text-align:center; }
 .cd-num {
   font-family:var(--font-mono); font-size:168px; line-height:1; font-weight:500;
@@ -214,8 +258,13 @@ img { max-width:100%; }
   text-shadow: 0 0 60px rgba(201,162,39,.22);
   font-variant-numeric: tabular-nums;
   min-width:2.05ch;
+  animation: digitGlow 6s ease-in-out infinite;           /* breathing glow */
 }
-.cd-num.pop { animation: numpop .45s ease; }
+@keyframes digitGlow {
+  0%,100% { text-shadow: 0 0 45px rgba(201,162,39,.16); }
+  50%     { text-shadow: 0 0 90px rgba(201,162,39,.4); }
+}
+.cd-num.pop { animation: numpop .45s ease, digitGlow 6s ease-in-out infinite; }
 @keyframes numpop { 0%{transform:translateY(6px); opacity:.35;} 100%{transform:translateY(0); opacity:1;} }
 .cd-lab { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.22em; font-size:19px; color:var(--falls-mist); margin-top:16px; }
 .sc-cd .cd-now {
@@ -450,6 +499,13 @@ body.mode-display.is-fs .disp-banner { display:none; }
 /* Fullscreen preview: make the wrap fill the screen */
 .preview-wrap:fullscreen { aspect-ratio:auto; }
 .preview-wrap:fullscreen .stage-wrap { position:absolute; inset:0; }
+
+/* Accessibility: honour the OS "reduce motion" preference */
+@media (prefers-reduced-motion: reduce) {
+  .mist, .spray { display:none; }
+  .gold-rule::after, .sc-title .t-logo > *, .g-card .ph, .sc-spot .s-left .ph,
+  .cd-num, .cd-sep { animation: none !important; }
+}
 
 ::-webkit-scrollbar { width:10px; }
 ::-webkit-scrollbar-thumb { background:#D5CFBE; border-radius:5px; }
@@ -778,11 +834,23 @@ function makeStage(host) {
   host.innerHTML = `
     <div class="stage">
       <div class="mist m1"></div><div class="mist m2"></div><div class="mist m3"></div>
+      <div class="spray"></div>
       <div class="vignette"></div>
       <div class="scene-slot" style="position:absolute;inset:0"></div>
       <div class="blackout"></div>
     </div>`;
   const stage = $('.stage', host);
+  /* falls-spray particles: continuous ambient motion behind every scene */
+  const spray = $('.spray', stage);
+  for (let i = 0; i < 28; i++) {
+    const d = document.createElement('i');
+    const size = (2 + Math.random() * 3.5).toFixed(1);
+    d.style.cssText = `left:${(Math.random() * 100).toFixed(2)}%;width:${size}px;height:${size}px;` +
+      `animation-duration:${(15 + Math.random() * 18).toFixed(1)}s;` +
+      `animation-delay:${(-Math.random() * 33).toFixed(1)}s;` +
+      `--sway:${Math.round(25 + Math.random() * 75)}px;opacity:0;`;
+    spray.appendChild(d);
+  }
   const fit = () => {
     const r = host.getBoundingClientRect();
     if (r.width && r.height) stage.style.transform = `translate(-50%,-50%) scale(${Math.min(r.width / 1920, r.height / 1080)})`;
