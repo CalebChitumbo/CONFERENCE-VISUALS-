@@ -302,6 +302,13 @@ body.mode-display.is-fs .disp-banner { display:none; }
 .btn.big { padding:13px 26px; font-size:15px; border-radius:10px; letter-spacing:.02em; }
 .btn:disabled { opacity:.45; cursor:not-allowed; }
 
+.logo-notice {
+  display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;
+  background:#FBF3D9; border-bottom:1px solid #E9D9A4;
+  padding:10px 26px; font-size:13px; color:#6A5A1E;
+}
+.logo-notice b { color:#514408; }
+
 .cp-main {
   flex:1; display:grid; grid-template-columns: minmax(520px, 46%) 1fr;
   gap:22px; padding:22px 26px; align-items:start; max-width:1800px; width:100%; margin:0 auto;
@@ -947,6 +954,14 @@ function initControl() {
       <button class="btn dark" id="btnImport">⬆&ensp;Import</button>
     </header>
 
+    <div class="logo-notice" id="logoNotice" hidden>
+      <span>🖼 <b>Logos not set</b> — the display is using a text placeholder. Upload the real marks once (transparent PNGs) and they're saved with your data:</span>
+      <button class="btn sm gold" id="upConf">Upload conference logo</button>
+      <button class="btn sm gold" id="upRpa">Upload RPA logo</button>
+      <input type="file" id="fileConf" accept="image/png,image/webp,image/jpeg" hidden>
+      <input type="file" id="fileRpa" accept="image/png,image/webp,image/jpeg" hidden>
+    </div>
+
     <main class="cp-main">
       <section>
         <div class="card">
@@ -1017,6 +1032,22 @@ function initControl() {
   $('#btnExport').onclick = exportJSON;
   $('#btnImport').onclick = () => $('#importFile').click();
   $('#importFile').onchange = importJSON;
+
+  /* quick logo uploads from the notice bar */
+  $('#upConf').onclick = () => $('#fileConf').click();
+  $('#upRpa').onclick = () => $('#fileRpa').click();
+  const wireLogoInput = (sel, key) => {
+    $(sel).onchange = async (e) => {
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+      try {
+        state.assets[key] = await processImage(f, 560, 'image/png');
+        persist(); renderAll(); initControlHeaderMark();
+        toast('Logo saved — it now shows on every scene and travels with JSON exports');
+      } catch (err) { toast('⚠ Could not read that image'); }
+    };
+  };
+  wireLogoInput('#fileConf', 'confLogo');
+  wireLogoInput('#fileRpa', 'rpaLogo');
   $('#ppSearch').oninput = (e) => { ui.q = e.target.value; renderPeople(); };
   $('#ppCatFilter').onchange = (e) => { ui.catFilter = e.target.value; renderPeople(); };
 
@@ -1051,6 +1082,12 @@ function renderAll(remount = true) {
   renderSceneTabs();
   renderSceneConfig();
   renderPeople();
+  const notice = $('#logoNotice');
+  if (notice) {
+    notice.hidden = !!(state.assets.confLogo && state.assets.rpaLogo);
+    $('#upConf').style.display = state.assets.confLogo ? 'none' : '';
+    $('#upRpa').style.display = state.assets.rpaLogo ? 'none' : '';
+  }
   if (remount && preview) preview.mount(state.live, false);
   $('#liveName') && ($('#liveName').textContent = 'PREVIEW · LIVE: ' + sceneLabel(state.live.scene) + (state.live.blackout ? ' · BLACKOUT' : ''));
 }
@@ -1282,8 +1319,12 @@ function openPersonModal(person) {
       <div class="frow">
         <div class="fld grow"><label>Session</label><input id="fSession" value="${esc(p.session)}" placeholder="Session 2"></div>
         <div class="fld" style="width:150px"><label>Time slot</label><input id="fSlot" value="${esc(p.slot)}" placeholder="Tue 11:30"></div>
-        <div class="fld" style="width:200px"><label>Category</label>
-          <input id="fCat" list="catList" value="${esc(p.category)}"><datalist id="catList">${allCategories().map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+        <div class="fld" style="width:210px"><label>Category</label>
+          <select id="fCatSel">
+            ${allCategories().map(c => `<option value="${esc(c)}" ${c === (p.category || 'Speaker') ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+            <option value="__other">Other — type a new one…</option>
+          </select>
+          <input id="fCatOther" placeholder="New category name" style="display:none"></div>
       </div>
       <div class="frow"><div class="fld grow"><label>Bio (a paragraph)</label><textarea id="fBio" rows="5" placeholder="A short professional biography…">${esc(p.bio)}</textarea></div></div>
     </div>
@@ -1293,6 +1334,11 @@ function openPersonModal(person) {
     </div>`);
 
   $('#mClose', veil).onclick = $('#mCancel', veil).onclick = closeModal;
+  $('#fCatSel', veil).onchange = (e) => {
+    const other = e.target.value === '__other';
+    $('#fCatOther', veil).style.display = other ? '' : 'none';
+    if (other) $('#fCatOther', veil).focus();
+  };
   $('#btnPickPhoto', veil).onclick = () => $('#fPhoto', veil).click();
   $('#fPhoto', veil).onchange = async (e) => {
     const f = e.target.files[0]; if (!f) return;
@@ -1308,6 +1354,7 @@ function openPersonModal(person) {
   $('#mSave', veil).onclick = () => {
     const name = $('#fName', veil).value.trim();
     if (!name) { toast('⚠ A full name is required'); $('#fName', veil).focus(); return; }
+    const catSel = $('#fCatSel', veil).value;
     const data = {
       honorific: $('#fHon', veil).value.trim(),
       name,
@@ -1315,7 +1362,7 @@ function openPersonModal(person) {
       topic: $('#fTopic', veil).value.trim(),
       session: $('#fSession', veil).value.trim(),
       slot: $('#fSlot', veil).value.trim(),
-      category: $('#fCat', veil).value.trim() || 'Speaker',
+      category: catSel === '__other' ? ($('#fCatOther', veil).value.trim() || 'Speaker') : catSel,
       bio: $('#fBio', veil).value.trim(),
       photo: draftPhoto,
     };
@@ -1343,6 +1390,10 @@ function openSettingsModal() {
   const veil = openModal(`
     <div class="m-h"><h2>Settings</h2><button class="btn sm x" id="mClose">✕</button></div>
     <div class="m-b">
+      <div class="settings-sec">Logos</div>
+      ${logoSlot('conf', 'Conference logo', 'Use <b>conf_logo_transparent.png</b> — the transparent version for dark scenes. Also auto-loads from <code>logos/</code> beside this file.')}
+      ${logoSlot('rpa', 'RPA logo', 'Institutional mark, shown on the Title scene host line. Auto-loads from <code>logos/rpa_logo.png</code>.')}
+
       <div class="settings-sec">Event wording (Title & holding scenes)</div>
       <div class="frow">
         <div class="fld grow"><label>Event name</label><input id="sName" value="${esc(s.eventName)}"></div>
@@ -1369,10 +1420,6 @@ function openSettingsModal() {
         </select></div>
         <div class="fld" style="width:160px"><label>Sessions (blank = auto)</label><input type="number" id="sSess" min="0" value="${esc(s.sessionsOverride)}" placeholder="auto: ${sessionsCount()}"></div>
       </div>
-
-      <div class="settings-sec">Logos</div>
-      ${logoSlot('conf', 'Conference logo', 'Use <b>conf_logo_transparent.png</b> — the transparent version for dark scenes. Also auto-loads from <code>logos/</code> beside this file.')}
-      ${logoSlot('rpa', 'RPA logo', 'Institutional mark, shown on the Title scene host line. Auto-loads from <code>logos/rpa_logo.png</code>.')}
 
       <div class="settings-sec">Data</div>
       <div class="push-row">
