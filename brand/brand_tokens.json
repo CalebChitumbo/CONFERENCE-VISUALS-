@@ -1,0 +1,82 @@
+{
+  "_comment": "Brand tokens for the 8th RPO Conference. Import this from any build script so palette and type values stay in one place.",
+  "conference": {
+    "full_name": "8th Annual Radiation Safety Conference",
+    "shorthand": "8th RPO Conference",
+    "edition": "8th",
+    "year": 2026,
+    "theme": "Sustaining Excellence in Radiation Safety: From Compliance to Culture",
+    "sector_focus": "Medical Facilities",
+    "host": "Radiation Protection Authority of Zambia",
+    "host_short": "RPA",
+    "venue_city": "Livingstone",
+    "venue_country": "Zambia",
+    "dates_long": "14 to 17 July 2026",
+    "dates_short": "14–17 July 2026",
+    "dates_mono": "14–17 JULY 2026"
+  },
+  "contact": {
+    "website": "www.rpa.org.zm",
+    "email": "conference@rpa.org.zm",
+    "phone": "+260 211 254 254",
+    "_note": "Placeholders — confirm with the user before locking into print deliverables."
+  },
+  "palette": {
+    "falls_gold": "#C9A227",
+    "falls_gold_highlight": "#F0DC8C",
+    "gunmetal": "#2B2D2F",
+    "charcoal": "#1A1B1D",
+    "mist_white": "#F7F4EC",
+    "pure_white": "#FFFFFF",
+    "rpa_green": "#3A8B3A",
+    "rpa_yellow": "#E5C100",
+    "falls_mist": "#A8B5BD"
+  },
+  "typography": {
+    "display": {
+      "preferred": "Cinzel",
+      "fallback_word": "Cambria",
+      "fallback_universal": "Georgia",
+      "usage": "Display headlines, section titles. All caps for ≤4 words, tracked +5%."
+    },
+    "subhead": {
+      "preferred": "Playfair Display",
+      "fallback_word": "Cambria",
+      "fallback_universal": "Georgia",
+      "usage": "Italic taglines, pull-quotes, ribbon callouts."
+    },
+    "body": {
+      "preferred": "Inter",
+      "fallback_word": "Calibri",
+      "fallback_universal": "Arial",
+      "usage": "Default body text. Min 11pt print, 16px screen."
+    },
+    "mono": {
+      "preferred": "Roboto Mono",
+      "fallback_word": "Consolas",
+      "fallback_universal": "Courier New",
+      "usage": "Dates, codes, badges, page numbers. Caps with tracking +10-15%."
+    }
+  },
+  "logo": {
+    "primary_png": "assets/logo_primary.png",
+    "primary_jpeg": "assets/logo_primary.jpeg",
+    "transparent_png": "assets/logo_transparent.png",
+    "small_png": "assets/logo_small.png",
+    "transparent_small_png": "assets/logo_transparent_small.png",
+    "min_size_print_mm": 30,
+    "min_size_screen_px": 200,
+    "use_transparent_when": "Background is not pure white",
+    "use_white_bg_when": "Background is white or near-white"
+  },
+  "hashtags": [
+    "#RPOConference2026",
+    "#8thRPOConference",
+    "#RadiationSafety",
+    "#MedicalRadiationSafety",
+    "#RadiationProtectionAuthority",
+    "#RPA",
+    "#Livingstone",
+    "#ZambiaHealthcare"
+  ]
+}

@@ -1,0 +1,72 @@
+/* ============================================================
+   8th RPO Conference — Display App Brand Tokens
+   Drop this into the app and use var(--token) everywhere.
+   Palette & type sampled from /rpo-conference-brand and /rpa-brand.
+   ============================================================ */
+
+/* Web fonts (screen build). For a projector these load fine over CDN.
+   If offline, fall back to Cambria / Calibri / Consolas automatically. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Playfair+Display:ital@0;1&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ---- Conference palette (primary) ---- */
+  --falls-gold:           #C9A227;  /* primary accent — "8th", highlights, rules */
+  --falls-gold-highlight: #F0DC8C;  /* lighter gold for gradients / shines */
+  --gunmetal:             #2B2D2F;  /* primary dark surface & text */
+  --charcoal:             #1A1B1D;  /* deepest dark — display backgrounds */
+  --mist-white:           #F7F4EC;  /* warm off-white canvas (NOT pure white) */
+  --pure-white:           #FFFFFF;  /* reverse type on dark only */
+  --falls-mist:           #A8B5BD;  /* cool grey-blue secondary accent */
+
+  /* ---- RPA atom colours — use ONLY when RPA logo/branding is co-displayed ---- */
+  --rpa-green:            #3A8B3A;
+  --rpa-yellow:           #E5C100;
+  /* (RPA institutional-brand greens, if you show the RPA logo standalone:) */
+  --rpa-green-inst:       #00A050;
+  --rpa-yellow-inst:      #F0F000;
+
+  /* ---- Typography ---- */
+  --font-display: 'Cinzel', Cambria, Georgia, serif;          /* headers, names */
+  --font-subhead: 'Playfair Display', Cambria, Georgia, serif;/* italic taglines */
+  --font-body:    'Inter', Calibri, Arial, sans-serif;        /* bios, UI, body */
+  --font-mono:    'Roboto Mono', Consolas, 'Courier New', monospace; /* dates, countdown, labels */
+
+  /* ---- Recommended defaults for the DISPLAY (projector) surface ---- */
+  --display-bg:     var(--charcoal);   /* dark-mode is the default big-screen look */
+  --display-text:   var(--mist-white);
+  --display-accent: var(--falls-gold); /* ONE gold moment per scene */
+}
+
+/* Convenience helpers ---------------------------------------- */
+.display-surface {                 /* full-screen projector scene */
+  background: var(--display-bg);
+  color: var(--display-text);
+  font-family: var(--font-body);
+}
+.headline {                        /* speaker names, scene titles */
+  font-family: var(--font-display);
+  color: var(--pure-white);
+  letter-spacing: 0.03em;          /* ~ +5% tracking, use on ≤4-word caps titles */
+}
+.accent { color: var(--falls-gold); }
+.tagline {                         /* italic theme line / pull-quotes */
+  font-family: var(--font-subhead);
+  font-style: italic;
+  color: var(--falls-mist);
+}
+.label, .countdown, .datecode {    /* "14–17 JULY 2026 · LIVINGSTONE", timers */
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;          /* +10–15% tracking */
+}
+.gold-rule {                       /* divider under headlines */
+  height: 3px;
+  background: var(--falls-gold);
+  border: 0;
+}
+.speaker-photo {                   /* circular headshot frame (IAEA-style) */
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--falls-gold);
+  background: var(--gunmetal);
+}
