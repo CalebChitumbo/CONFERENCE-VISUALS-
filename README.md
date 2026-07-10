@@ -13,11 +13,16 @@ It is both the **control hub** (operator view) and the **big-screen display**
 ## Quick start
 
 1. Open `index.html` in Chrome/Edge → this is the **Control Panel**.
-2. Click **🖥 Open Display Window** → a second window opens showing the live scene.
-3. Drag the display window onto the projector screen and press **F**
-   (or double-click) for fullscreen.
+2. Click **🖥 Open Display Window** → the projector-output window opens.
+   With a projector/second screen attached, Chrome/Edge places it there
+   automatically (allow the one-time "manage windows" permission);
+   otherwise drag it onto the projector screen yourself.
+3. Click **⛶ Go fullscreen** on the banner (or press **F** / double-click).
 4. Enter your speakers under **People**, pick a scene, press **▶ Display …** —
    it appears on the projector with a smooth transition.
+
+The preview inside the control panel is a *mirror* of the display window —
+your confidence monitor — so every scene shows in both places at once.
 
 > If pop-ups are blocked or you only have one screen, use
 > **⛶ Fullscreen preview** on the control panel instead.

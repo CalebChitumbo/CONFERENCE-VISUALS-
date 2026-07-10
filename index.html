@@ -250,6 +250,19 @@ body.mode-display.idle { cursor:none; }
   border-radius:8px; padding:10px 18px; font-size:14px; font-family:var(--font-body);
 }
 .disp-btn:hover { border-color:var(--falls-gold); color:var(--falls-gold-highlight); }
+.disp-btn.gold { background:var(--falls-gold); border-color:var(--falls-gold); color:var(--charcoal); font-weight:600; }
+.disp-btn.gold:hover { background:var(--falls-gold-highlight); color:var(--charcoal); }
+
+/* Banner shown on the display window until it goes fullscreen (or is dismissed) */
+.disp-banner {
+  position:fixed; top:0; left:0; right:0; z-index:55;
+  display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+  background:rgba(26,27,29,.94); border-bottom:1px solid rgba(201,162,39,.55);
+  padding:11px 18px; font-family:var(--font-body); font-size:14.5px; color:var(--mist-white);
+  text-align:center;
+}
+.disp-banner b { color:var(--falls-gold-highlight); font-family:var(--font-mono); letter-spacing:.14em; font-weight:500; }
+body.mode-display.is-fs .disp-banner { display:none; }
 
 /* ══════════════════════════════════════════════════════════════
    CONTROL PANEL
@@ -828,6 +841,11 @@ function initDisplay() {
   document.body.classList.add('mode-display');
   const root = $('#displayRoot'); root.hidden = false;
   root.innerHTML = `<div class="disp-host" style="position:absolute;inset:0"></div>
+    <div class="disp-banner" id="dispBanner">
+      <span><b>PROJECTOR OUTPUT</b> — this window is what the audience sees. Drag it onto the projector / second screen, then go fullscreen.</span>
+      <button class="disp-btn gold" id="btnBannerFs">⛶&ensp;Go fullscreen</button>
+      <button class="disp-btn" id="btnBannerX" title="Hide this bar">✕</button>
+    </div>
     <div class="disp-ui">
       <button class="disp-btn" id="btnFs">⛶&ensp;Fullscreen&ensp;(F)</button>
     </div>`;
@@ -880,6 +898,10 @@ function initDisplay() {
     else document.documentElement.requestFullscreen().catch(() => toast('Fullscreen was blocked by the browser'));
   };
   $('#btnFs').onclick = goFs;
+  $('#btnBannerFs').onclick = goFs;
+  $('#btnBannerX').onclick = () => { $('#dispBanner').remove(); };
+  document.addEventListener('fullscreenchange', () =>
+    document.body.classList.toggle('is-fs', !!document.fullscreenElement));
   window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'f') goFs(); });
   window.addEventListener('dblclick', goFs);
   let idleT;
@@ -929,7 +951,7 @@ function initControl() {
       <section>
         <div class="card">
           <div class="card-h">
-            <span class="ttl">Live Preview — what the audience sees</span>
+            <span class="ttl">Preview — a mirror of the display window (not the output itself)</span>
             <span style="flex:1"></span>
             <button class="btn sm" id="btnFsPrev">⛶ Fullscreen preview</button>
           </div>
@@ -937,7 +959,7 @@ function initControl() {
             <div id="previewHost" style="position:absolute;inset:0"></div>
             <div class="live-badge"><span class="pulse-dot"></span><span id="liveName">—</span></div>
           </div>
-          <div class="preview-hint">Tip: open the display window, drag it to the projector screen, then press <b>F</b> (or double-click) for fullscreen. If both screens mirror, use the fullscreen preview instead.</div>
+          <div class="preview-hint">Tip: click <b>Open Display Window</b> — in Chrome/Edge it jumps to your second screen automatically (allow the one-time permission). Otherwise drag it onto the projector screen, then press <b>F</b>. If both screens mirror, use <b>⛶ Fullscreen preview</b> instead.</div>
           <div class="scene-tabs" id="sceneTabs"></div>
           <div class="scene-config" id="sceneConfig"></div>
         </div>
@@ -964,10 +986,26 @@ function initControl() {
   preview = makeStage($('#previewHost'));
   preview.mount(state.live, false);
 
-  $('#btnOpenDisplay').onclick = () => {
+  $('#btnOpenDisplay').onclick = async () => {
     const url = location.href.split('#')[0] + '#display';
-    const w = window.open(url, 'rpo8display');
-    if (!w) toast('Pop-up blocked — allow pop-ups, or open this file again and add #display to the URL');
+    /* If the browser supports the Window Management API and a second screen
+       is attached, place the display window straight onto it. */
+    let feat = '', onSecond = false;
+    try {
+      if ('getScreenDetails' in window) {
+        const sd = await window.getScreenDetails();  // one-time permission prompt
+        const other = sd.screens.find(s => s !== sd.currentScreen);
+        if (other) {
+          feat = `left=${other.availLeft},top=${other.availTop},width=${other.availWidth},height=${other.availHeight}`;
+          onSecond = true;
+        }
+      }
+    } catch (e) { /* permission denied or unsupported — fall back to a plain window */ }
+    const w = window.open(url, 'rpo8display', feat);
+    if (!w) { toast('Pop-up blocked — allow pop-ups, or open this file again and add #display to the URL'); return; }
+    toast(onSecond
+      ? 'Display opened on your second screen — click “Go fullscreen” on it'
+      : 'Display window opened — drag it to the projector screen, then press F for fullscreen');
   };
   $('#btnFsPrev').onclick = () => {
     const el = $('#previewWrap');
@@ -1014,7 +1052,7 @@ function renderAll(remount = true) {
   renderSceneConfig();
   renderPeople();
   if (remount && preview) preview.mount(state.live, false);
-  $('#liveName') && ($('#liveName').textContent = 'LIVE · ' + sceneLabel(state.live.scene) + (state.live.blackout ? ' · BLACKOUT' : ''));
+  $('#liveName') && ($('#liveName').textContent = 'PREVIEW · LIVE: ' + sceneLabel(state.live.scene) + (state.live.blackout ? ' · BLACKOUT' : ''));
 }
 
 /* ── Scene tabs & per-scene config ────────────────────────────── */
@@ -1039,7 +1077,7 @@ function renderSceneTabs() {
     renderAll(false);
     toast(state.live.blackout ? 'Display blacked out' : 'Display restored');
   };
-  $('#liveName') && ($('#liveName').textContent = 'LIVE · ' + sceneLabel(state.live.scene) + (state.live.blackout ? ' · BLACKOUT' : ''));
+  $('#liveName') && ($('#liveName').textContent = 'PREVIEW · LIVE: ' + sceneLabel(state.live.scene) + (state.live.blackout ? ' · BLACKOUT' : ''));
 }
 
 function catOptions(selected, withAll = true) {
