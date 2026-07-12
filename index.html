@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>8th RPO Conference — Display Controller</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231A1B1D'/%3E%3Ccircle cx='32' cy='32' r='29' fill='none' stroke='%23C9A227' stroke-width='3'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='%23C9A227' font-family='Georgia,serif' font-weight='700'%3E8%3C/text%3E%3C/svg%3E">
 <!-- ============================================================
      8th Annual RPO Conference for Medical Facilities
      Live Display & Control application — single self-contained file.
@@ -505,6 +506,7 @@ body.mode-display.is-fs .disp-banner { display:none; }
   .mist, .spray { display:none; }
   .gold-rule::after, .sc-title .t-logo > *, .g-card .ph, .sc-spot .s-left .ph,
   .cd-num, .cd-sep { animation: none !important; }
+  .scene, .a { animation-duration: .01s !important; animation-delay: 0s !important; }
 }
 
 ::-webkit-scrollbar { width:10px; }
@@ -527,6 +529,8 @@ const $$ = (s, el=document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => 'p' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 const pad2 = n => String(n).padStart(2, '0');
+/* Date → "YYYY-MM-DDTHH:MM" in LOCAL time (datetime-local format; toISOString would be UTC) */
+const toLocalDT = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
 /* localStorage may be unavailable (sandboxed iframe) — degrade to memory */
 const store = (() => {
@@ -541,9 +545,11 @@ const store = (() => {
 const LS_KEY = 'rpo8.display.state.v1';
 
 function toast(msg, ms = 2600) {
+  const host = $('#toasts');
+  while (host.children.length >= 3) host.firstChild.remove();  // cap the stack when pushing rapidly
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg;
-  $('#toasts').appendChild(t);
+  host.appendChild(t);
   setTimeout(() => { t.classList.add('fade'); setTimeout(() => t.remove(), 450); }, ms);
 }
 
@@ -617,6 +623,8 @@ function loadState() {
       if (s && Array.isArray(s.people) && s.settings) {
         state = Object.assign(defaultState(false), s);
         state.settings = Object.assign(defaultState(false).settings, s.settings);
+        state.assets = Object.assign({ confLogo: null, rpaLogo: null }, s.assets || {});
+        state.live = Object.assign(defaultState(false).live, s.live || {});
         return;
       }
     }
@@ -630,7 +638,12 @@ try { bc = new BroadcastChannel('rpo8-live-sync'); } catch (e) {}
 
 function persist(broadcast = true) {
   state.rev++;
-  try { store.setItem(LS_KEY, JSON.stringify(state)); }
+  try {
+    store.setItem(LS_KEY, JSON.stringify(state));
+    /* small change-stamp so other windows can poll cheaply without
+       re-parsing the full state (which includes base64 photos) */
+    store.setItem(LS_KEY + '.stamp', Date.now() + ':' + state.rev);
+  }
   catch (e) { toast('⚠ Storage is full — photo may be too large. Data kept in memory only.'); }
   if (broadcast && bc) { try { bc.postMessage({ type: 'state', state }); } catch (e) {} }
 }
@@ -682,7 +695,7 @@ function logoHTML(kind, cls) {
   const fall  = kind === 'conf'
     ? `<div class="logo-fallback ${cls || ''}"><div class="lf-8" style="font-size:2.4em">8<span style="font-size:.55em">TH</span></div><div class="lf-t" style="font-size:.5em">RPO Conference</div></div>`
     : `<div class="logo-fallback ${cls || ''}"><div class="lf-t" style="font-size:.8em;color:var(--rpa-green)">RPA</div></div>`;
-  if (asset) return `<img class="${cls || ''}" src="${asset}" alt="">`;
+  if (asset) return `<img class="${cls || ''}" src="${esc(asset)}" alt="">`;
   /* try the file on disk; if it 404s, swap in the typographic fallback */
   return `<img class="${cls || ''}" src="${file}" alt="" onerror="this.outerHTML=${esc(JSON.stringify(fall))}">`;
 }
@@ -691,7 +704,7 @@ function logoHTML(kind, cls) {
    3. SCENES — HTML builders for the 1920×1080 stage
    ════════════════════════════════════════════════════════════════ */
 function photoCircleHTML(p) {
-  if (p.photo) return `<img class="ph" src="${p.photo}" alt="">`;
+  if (p.photo) return `<img class="ph" src="${esc(p.photo)}" alt="">`;
   return `<div class="ph"><span class="ph-init">${esc(initialsOf(p))}</span></div>`;
 }
 function footerHTML() {
@@ -702,14 +715,15 @@ function footerHTML() {
 
 function sceneTitle() {
   const s = state.settings;
+  const meta = [s.datesText, s.venueText].filter(Boolean).map(esc).join('&ensp;·&ensp;');
   return `<div class="sc-title">
     <div class="t-logo a" style="--i:0">${logoHTML('conf')}</div>
     <div class="t-name headline a" style="--i:1">${esc(s.eventName)}</div>
     ${s.eventSub ? `<div class="t-sub a" style="--i:2">${esc(s.eventSub)}</div>` : ''}
     <hr class="gold-rule t-rule a" style="--i:3">
-    <div class="t-theme tagline a" style="--i:4">“${esc(s.theme)}”</div>
-    <div class="t-meta label a" style="--i:5">${esc(s.datesText)}&ensp;·&ensp;${esc(s.venueText)}</div>
-    <div class="t-host a" style="--i:6">${logoHTML('rpa')}<span>${esc(s.hostText)}</span></div>
+    ${s.theme ? `<div class="t-theme tagline a" style="--i:4">“${esc(s.theme)}”</div>` : ''}
+    ${meta ? `<div class="t-meta label a" style="--i:5">${meta}</div>` : ''}
+    ${s.hostText ? `<div class="t-host a" style="--i:6">${logoHTML('rpa')}<span>${esc(s.hostText)}</span></div>` : ''}
     ${footerHTML()}
   </div>`;
 }
@@ -722,11 +736,13 @@ function gridMetrics(n) {
   else if (n <= 12) cols = 6;
   else if (n <= 15) cols = 5;
   else if (n <= 18) cols = 6;
-  else cols = 7;
+  else if (n <= 28) cols = 7;
+  else cols = 8;
   const rows = Math.ceil(n / cols);
-  const ph = rows <= 1 ? 262 : rows === 2 ? 205 : rows === 3 ? 148 : 116;
-  const nm = rows <= 1 ? 30 : rows === 2 ? 26 : rows === 3 ? 21 : 18;
-  const gapy = rows <= 2 ? 36 : 22;
+  const tier = Math.min(rows, 6);
+  const ph = [262, 205, 148, 116, 94, 78][tier - 1];
+  const nm = [30, 26, 21, 18, 16, 14][tier - 1];
+  const gapy = rows <= 2 ? 36 : rows <= 4 ? 22 : 14;
   return { cols, rows, ph, nm, gapy, dense: rows >= 4 };
 }
 
@@ -811,7 +827,7 @@ function sceneCountdown() {
     ${target ? cdBlocks : ''}
     <hr class="gold-rule c-rule a" style="--i:3">
     <div class="c-stats">${statHTML}</div>
-    <div class="c-theme tagline a" style="--i:7">“${esc(s.theme)}”</div>
+    ${s.theme ? `<div class="c-theme tagline a" style="--i:7">“${esc(s.theme)}”</div>` : ''}
     ${footerHTML()}
   </div>`;
 }
@@ -865,12 +881,14 @@ function makeStage(host) {
       const contentChanged = key !== this.lastKey;
       this.lastKey = key;
       const slot = $('.scene-slot', stage);
-      const old = $('.scene', slot);
+      /* transition out EVERY live scene, not just the first — rapid pushes
+         (e.g. arrow-key spotlight stepping) must not accumulate stale scenes */
+      const olds = $$('.scene:not(.out)', slot);
       const sc = document.createElement('div');
       sc.className = 'scene' + ((animate && contentChanged) ? '' : ' no-anim');
       sc.innerHTML = buildSceneHTML(live);
       slot.appendChild(sc);
-      if (old) { old.classList.add('out'); setTimeout(() => old.remove(), 620); }
+      olds.forEach(old => { old.classList.add('out'); setTimeout(() => old.remove(), 620); });
       $('.blackout', stage).classList.toggle('on', !!live.blackout);
       tick(); // immediate countdown/clock fill
     },
@@ -914,6 +932,7 @@ const IS_DISPLAY = /display/.test(location.hash) || new URLSearchParams(location
 
 function initDisplay() {
   document.body.classList.add('mode-display');
+  document.title = 'PROJECTOR OUTPUT — 8th RPO Conference';
   const root = $('#displayRoot'); root.hidden = false;
   root.innerHTML = `<div class="disp-host" style="position:absolute;inset:0"></div>
     <div class="disp-banner" id="dispBanner">
@@ -935,7 +954,7 @@ function initDisplay() {
     if (forced === 'spotlight') params.personId = (state.people[+(q.get('person') || 0)] || {}).id;
     if (forced === 'grid') params.category = q.get('category') || 'All';
     if (forced === 'countdown' && !state.settings.countdownTarget) {
-      state.settings.countdownTarget = new Date(Date.now() + 15 * 6e4).toISOString().slice(0, 16);
+      state.settings.countdownTarget = toLocalDT(new Date(Date.now() + 15 * 6e4));
     }
     return { scene: forced, params, blackout: false, pushedAt: 1 };
   }
@@ -943,29 +962,58 @@ function initDisplay() {
   stagePort.mount(currentLive());
 
   const applyIncoming = (ns) => {
-    const liveChanged = JSON.stringify(ns.live) !== JSON.stringify(state.live);
+    if (!ns || !ns.live || !ns.settings || !Array.isArray(ns.people)) return;
+    const sceneChanged = JSON.stringify({ ...ns.live, blackout: 0 }) !== JSON.stringify({ ...state.live, blackout: 0 });
+    const boChanged = !!ns.live.blackout !== !!state.live.blackout;
     const dataChanged = ns.rev !== state.rev;
     state = ns;
     if (forced) return;
-    if (liveChanged || dataChanged) stagePort.mount(state.live, liveChanged);
+    if (sceneChanged || dataChanged) stagePort.mount(state.live, sceneChanged);
+    else if (boChanged) stagePort.setBlackout(state.live.blackout); // fade only — don't rebuild the scene
   };
 
-  if (bc) bc.onmessage = (e) => {
-    const d = e.data || {};
-    if (d.type === 'state' && d.state) applyIncoming(d.state);
-    if (d.type === 'ping') { try { bc.postMessage({ type: 'display-online' }); } catch (err) {} }
-  };
+  if (bc) {
+    bc.onmessage = (e) => {
+      const d = e.data || {};
+      if (d.type === 'state' && d.state) applyIncoming(d.state);
+      if (d.type === 'ping') { try { bc.postMessage({ type: 'display-online' }); } catch (err) {} }
+    };
+    /* announce ourselves immediately and periodically so the control panel's
+       "Display: connected" dot lights up without waiting for its next ping */
+    const announce = () => { try { bc.postMessage({ type: 'display-online' }); } catch (err) {} };
+    announce();
+    setInterval(announce, 2500);
+    window.addEventListener('pagehide', () => { try { bc.postMessage({ type: 'display-offline' }); } catch (err) {} });
+  }
   /* storage-event + polling fallbacks (covers file:// quirks) */
   window.addEventListener('storage', (e) => {
     if (e.key === LS_KEY && e.newValue) { try { applyIncoming(JSON.parse(e.newValue)); } catch (err) {} }
   });
+  /* poll the tiny change-stamp key; only parse the full state when it moves */
+  let lastStamp = store.getItem(LS_KEY + '.stamp');
   setInterval(() => {
     try {
+      const stamp = store.getItem(LS_KEY + '.stamp');
+      if (stamp === lastStamp) return;
+      lastStamp = stamp;
       const raw = store.getItem(LS_KEY); if (!raw) return;
-      const s = JSON.parse(raw);
-      if (s && s.rev !== state.rev) applyIncoming(s);
+      applyIncoming(JSON.parse(raw));
     } catch (e) {}
   }, 1500);
+
+  /* keep the projector screen awake while the display is visible
+     (secure contexts only — harmless no-op from file://) */
+  let wakeLock = null;
+  const requestWake = async () => {
+    try {
+      if ('wakeLock' in navigator && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      }
+    } catch (e) {}
+  };
+  requestWake();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') requestWake(); });
 
   /* fullscreen + idle cursor */
   const goFs = () => {
@@ -999,7 +1047,8 @@ function pushLive(scene, params = {}) {
   persist();
   preview && preview.mount(state.live, true);
   renderSceneTabs();
-  toast(`Pushed “${sceneLabel(scene)}” to the display`);
+  const who = scene === 'spotlight' ? personById(params.personId) : null;
+  toast(`Pushed “${sceneLabel(scene)}${who ? ' — ' + fullName(who) : ''}” to the display`);
 }
 function sceneLabel(s) {
   return { title: 'Title / Welcome', grid: 'Panel Grid', spotlight: 'Speaker Spotlight', countdown: 'Countdown & Stats' }[s] || s;
@@ -1007,9 +1056,10 @@ function sceneLabel(s) {
 
 function initControl() {
   const root = $('#controlRoot'); root.hidden = false;
+  document.title = 'Control Panel — 8th RPO Conference';
   root.innerHTML = `
     <header class="cp-header">
-      <div class="hd-mark">${state.assets.confLogo ? `<img src="${state.assets.confLogo}" alt="">` : `<span>8</span>`}</div>
+      <div class="hd-mark">${state.assets.confLogo ? `<img src="${esc(state.assets.confLogo)}" alt="">` : `<span>8</span>`}</div>
       <div>
         <h1>8TH RPO CONFERENCE — DISPLAY CONTROLLER</h1>
         <div class="hd-sub">Medical Facilities · Livingstone · 14–17 July 2026</div>
@@ -1071,21 +1121,25 @@ function initControl() {
 
   $('#btnOpenDisplay').onclick = async () => {
     const url = location.href.split('#')[0] + '#display';
-    /* If the browser supports the Window Management API and a second screen
-       is attached, place the display window straight onto it. */
-    let feat = '', onSecond = false;
+    /* Open the window IMMEDIATELY, while the click's user activation is
+       still valid — waiting on the Window Management permission prompt
+       first can outlive the activation and get the pop-up blocked. */
+    const w = window.open(url, 'rpo8display', 'width=1024,height=576');
+    if (!w) { toast('Pop-up blocked — allow pop-ups, or open this file again and add #display to the URL'); return; }
+    /* Then, if the Window Management API and a second screen are available,
+       move the already-open window straight onto the projector. */
+    let onSecond = false;
     try {
       if ('getScreenDetails' in window) {
         const sd = await window.getScreenDetails();  // one-time permission prompt
         const other = sd.screens.find(s => s !== sd.currentScreen);
         if (other) {
-          feat = `left=${other.availLeft},top=${other.availTop},width=${other.availWidth},height=${other.availHeight}`;
+          w.moveTo(other.availLeft, other.availTop);
+          w.resizeTo(other.availWidth, other.availHeight);
           onSecond = true;
         }
       }
-    } catch (e) { /* permission denied or unsupported — fall back to a plain window */ }
-    const w = window.open(url, 'rpo8display', feat);
-    if (!w) { toast('Pop-up blocked — allow pop-ups, or open this file again and add #display to the URL'); return; }
+    } catch (e) { /* permission denied or unsupported — leave the window where it is */ }
     toast(onSecond
       ? 'Display opened on your second screen — click “Go fullscreen” on it'
       : 'Display window opened — drag it to the projector screen, then press F for fullscreen');
@@ -1109,7 +1163,7 @@ function initControl() {
       const f = e.target.files[0]; e.target.value = ''; if (!f) return;
       try {
         state.assets[key] = await processImage(f, 560, 'image/png');
-        persist(); renderAll(); initControlHeaderMark();
+        persist(); renderAll();
         toast('Logo saved — it now shows on every scene and travels with JSON exports');
       } catch (err) { toast('⚠ Could not read that image'); }
     };
@@ -1121,6 +1175,7 @@ function initControl() {
 
   /* keyboard: arrows drive the spotlight queue when it is live */
   window.addEventListener('keydown', (e) => {
+    if ($('#modalVeil')) return;                     // never step the display while editing in a modal
     if (/(INPUT|TEXTAREA|SELECT)/.test(document.activeElement.tagName)) return;
     if (state.live.scene !== 'spotlight') return;
     if (e.key === 'ArrowRight') stepSpotlight(1);
@@ -1132,7 +1187,11 @@ function initControl() {
     bc.onmessage = (e) => {
       const d = e.data || {};
       if (d.type === 'display-online') ui.displayLastSeen = Date.now();
-      if (d.type === 'state' && d.state) { /* another control window */ state = d.state; renderAll(false); }
+      if (d.type === 'display-offline') ui.displayLastSeen = 0;
+      if (d.type === 'state' && d.state && d.state.settings && Array.isArray(d.state.people)) {
+        /* another control window pushed — adopt its state and refresh, preview included */
+        state = d.state; renderAll();
+      }
     };
     setInterval(() => { try { bc.postMessage({ type: 'ping' }); } catch (e) {} }, 3000);
   }
@@ -1150,12 +1209,15 @@ function renderAll(remount = true) {
   renderSceneTabs();
   renderSceneConfig();
   renderPeople();
+  initControlHeaderMark();
   const notice = $('#logoNotice');
   if (notice) {
     notice.hidden = !!(state.assets.confLogo && state.assets.rpaLogo);
     $('#upConf').style.display = state.assets.confLogo ? 'none' : '';
     $('#upRpa').style.display = state.assets.rpaLogo ? 'none' : '';
   }
+  const foot = $('.cp-foot');
+  if (foot) foot.textContent = state.settings.theme ? `“${state.settings.theme}”` : '';
   if (remount && preview) preview.mount(state.live, false);
   $('#liveName') && ($('#liveName').textContent = 'PREVIEW · LIVE: ' + sceneLabel(state.live.scene) + (state.live.blackout ? ' · BLACKOUT' : ''));
 }
@@ -1202,6 +1264,7 @@ function renderSceneConfig() {
   }
 
   if (t === 'grid') {
+    if (ui.gridCat && ui.gridCat !== 'All' && !allCategories().includes(ui.gridCat)) ui.gridCat = 'All';
     const sel = ui.gridCat || 'All';
     const n = peopleInCategory(sel).length;
     host.innerHTML = `
@@ -1221,6 +1284,7 @@ function renderSceneConfig() {
   }
 
   if (t === 'spotlight') {
+    if (ui.spotQueue && ui.spotQueue !== 'All' && !allCategories().includes(ui.spotQueue)) ui.spotQueue = 'All';
     const queueCat = ui.spotQueue || 'All';
     const queue = peopleInCategory(queueCat);
     if (!ui.spotId || !queue.some(p => p.id === ui.spotId)) ui.spotId = (queue[0] || {}).id;
@@ -1230,7 +1294,7 @@ function renderSceneConfig() {
       <div class="frow">
         <div class="fld"><label>Queue (group)</label><select id="spotQueue">${catOptions(queueCat)}</select></div>
         <div class="fld grow"><label>Person</label><select id="spotPerson">
-          ${queue.map(p => `<option value="${p.id}" ${p.id === ui.spotId ? 'selected' : ''}>${esc(fullName(p))} — ${esc(p.topic || p.org || '')}</option>`).join('')}
+          ${queue.map(p => `<option value="${esc(p.id)}" ${p.id === ui.spotId ? 'selected' : ''}>${esc(fullName(p))} — ${esc(p.topic || p.org || '')}</option>`).join('')}
         </select></div>
       </div>
       <div class="push-row">
@@ -1266,15 +1330,26 @@ function renderSceneConfig() {
           <button class="btn sm" id="cdClear">Clear</button>
         </div></div></div>
       <div class="push-row"><button class="btn gold big" id="pushCd">▶&ensp;Display Countdown</button></div>`;
-    const toLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    /* quick-sets are live controls: if the countdown is already on screen,
+       apply the new target immediately without needing a re-push */
+    const applyLiveIfCountdown = () => {
+      if (state.live.scene !== 'countdown') return;
+      state.settings.countdownTarget = $('#cdTarget').value;
+      state.settings.countdownLabel = $('#cdLabel').value.trim();
+      persist();
+      preview && preview.mount(state.live, false);
+      toast('Countdown updated on the display');
+    };
     $$('.quickbtns [data-min]', host).forEach(b => b.onclick = () => {
-      $('#cdTarget').value = toLocal(new Date(Date.now() + (+b.dataset.min) * 6e4));
+      $('#cdTarget').value = toLocalDT(new Date(Date.now() + (+b.dataset.min) * 6e4));
+      applyLiveIfCountdown();
     });
     $('#cdNextHour').onclick = () => {
       const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0);
-      $('#cdTarget').value = toLocal(d);
+      $('#cdTarget').value = toLocalDT(d);
+      applyLiveIfCountdown();
     };
-    $('#cdClear').onclick = () => { $('#cdTarget').value = ''; };
+    $('#cdClear').onclick = () => { $('#cdTarget').value = ''; applyLiveIfCountdown(); };
     $('#pushCd').onclick = () => {
       state.settings.countdownTarget = $('#cdTarget').value;
       state.settings.countdownLabel = $('#cdLabel').value.trim();
@@ -1298,6 +1373,8 @@ function stepSpotlight(dir) {
 /* ── People manager ───────────────────────────────────────────── */
 function renderPeople() {
   const list = $('#ppList'); if (!list) return;
+  /* the selected category may have vanished (import / delete / wipe) */
+  if (ui.catFilter !== 'All' && !allCategories().includes(ui.catFilter)) ui.catFilter = 'All';
   const q = ui.q.trim().toLowerCase();
   const rows = state.people
     .map((p, idx) => ({ p, idx }))
@@ -1314,7 +1391,7 @@ function renderPeople() {
     return;
   }
   list.innerHTML = rows.map(({ p, idx }) => `
-    <div class="pp-row" data-id="${p.id}">
+    <div class="pp-row" data-id="${esc(p.id)}">
       ${photoCircleHTML(p)}
       <div class="pp-info">
         <div class="pp-name">${esc(fullName(p))}</div>
@@ -1335,7 +1412,14 @@ function renderPeople() {
       const act = btn.dataset.act;
       const i = state.people.findIndex(x => x.id === id);
       if (act === 'edit') openPersonModal(personById(id));
-      if (act === 'spot') { ui.spotId = id; ui.sceneTab = 'spotlight'; pushLive('spotlight', { personId: id, queue: ui.spotQueue || 'All' }); renderSceneTabs(); renderSceneConfig(); }
+      if (act === 'spot') {
+        /* fall back to the All queue when this person isn't in the selected one,
+           so Prev/Next steps through a queue that actually contains them */
+        if (!peopleInCategory(ui.spotQueue || 'All').some(x => x.id === id)) ui.spotQueue = 'All';
+        ui.spotId = id; ui.sceneTab = 'spotlight';
+        pushLive('spotlight', { personId: id, queue: ui.spotQueue || 'All' });
+        renderSceneTabs(); renderSceneConfig();
+      }
       if (act === 'del') {
         const p = personById(id);
         if (confirm(`Delete ${fullName(p)}? This cannot be undone.`)) {
@@ -1369,7 +1453,7 @@ function openPersonModal(person) {
     <div class="m-h"><h2>${person ? 'Edit person' : 'Add person'}</h2><button class="btn sm x" id="mClose">✕</button></div>
     <div class="m-b">
       <div class="photo-drop" style="margin-bottom:18px">
-        <span id="phPrev">${draftPhoto ? `<img class="ph" style="width:84px;height:84px" src="${draftPhoto}">` : `<div class="ph" style="width:84px;height:84px"><span class="ph-init">${esc(initialsOf(p))}</span></div>`}</span>
+        <span id="phPrev">${draftPhoto ? `<img class="ph" style="width:84px;height:84px" src="${esc(draftPhoto)}">` : `<div class="ph" style="width:84px;height:84px"><span class="ph-init">${esc(initialsOf(p))}</span></div>`}</span>
         <div>
           <input type="file" id="fPhoto" accept="image/*" hidden>
           <button class="btn" id="btnPickPhoto">📷&ensp;${draftPhoto ? 'Change photo' : 'Upload photo'}</button>
@@ -1409,10 +1493,10 @@ function openPersonModal(person) {
   };
   $('#btnPickPhoto', veil).onclick = () => $('#fPhoto', veil).click();
   $('#fPhoto', veil).onchange = async (e) => {
-    const f = e.target.files[0]; if (!f) return;
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     try {
       draftPhoto = await processImage(f, 640, 'image/jpeg', 0.85);
-      $('#phPrev', veil).innerHTML = `<img class="ph" style="width:84px;height:84px" src="${draftPhoto}">`;
+      $('#phPrev', veil).innerHTML = `<img class="ph" style="width:84px;height:84px" src="${esc(draftPhoto)}">`;
       toast('Photo attached');
     } catch (err) { toast('⚠ Could not read that image'); }
   };
@@ -1445,22 +1529,27 @@ function openPersonModal(person) {
 
 function openSettingsModal() {
   const s = state.settings;
-  const logoSlot = (kind, label, hint) => {
+  const LOGO_META = {
+    conf: { label: 'Conference logo', hint: 'Use <b>conf_logo_transparent.png</b> — the transparent version for dark scenes. Also auto-loads from <code>logos/</code> beside this file.' },
+    rpa:  { label: 'RPA logo', hint: 'Institutional mark, shown on the Title scene host line. Auto-loads from <code>logos/rpa_logo.png</code>.' },
+  };
+  const slotInner = (kind) => {
     const asset = kind === 'conf' ? state.assets.confLogo : state.assets.rpaLogo;
-    return `<div class="logo-slot">
-      <div class="lg-prev">${asset ? `<img src="${asset}">` : `<span>NO LOGO</span>`}</div>
-      <div class="lg-info"><b>${label}</b><br>${hint}</div>
+    const meta = LOGO_META[kind];
+    return `
+      <div class="lg-prev">${asset ? `<img src="${esc(asset)}">` : `<span>NO LOGO</span>`}</div>
+      <div class="lg-info"><b>${meta.label}</b><br>${meta.hint}</div>
       <input type="file" id="f_${kind}" accept="image/png,image/webp,image/jpeg" hidden>
       <button class="btn sm" data-logo="${kind}">Upload</button>
-      ${asset ? `<button class="btn sm danger" data-logoclear="${kind}">Remove</button>` : ''}
-    </div>`;
+      ${asset ? `<button class="btn sm danger" data-logoclear="${kind}">Remove</button>` : ''}`;
   };
+  const logoSlot = (kind) => `<div class="logo-slot" data-slotwrap="${kind}">${slotInner(kind)}</div>`;
   const veil = openModal(`
     <div class="m-h"><h2>Settings</h2><button class="btn sm x" id="mClose">✕</button></div>
     <div class="m-b">
       <div class="settings-sec">Logos</div>
-      ${logoSlot('conf', 'Conference logo', 'Use <b>conf_logo_transparent.png</b> — the transparent version for dark scenes. Also auto-loads from <code>logos/</code> beside this file.')}
-      ${logoSlot('rpa', 'RPA logo', 'Institutional mark, shown on the Title scene host line. Auto-loads from <code>logos/rpa_logo.png</code>.')}
+      ${logoSlot('conf')}
+      ${logoSlot('rpa')}
 
       <div class="settings-sec">Event wording (Title & holding scenes)</div>
       <div class="frow">
@@ -1501,23 +1590,30 @@ function openSettingsModal() {
     </div>`);
 
   $('#mClose', veil).onclick = $('#mCancel', veil).onclick = closeModal;
-  $$('[data-logo]', veil).forEach(b => b.onclick = () => $('#f_' + b.dataset.logo, veil).click());
-  $$('[data-logoclear]', veil).forEach(b => b.onclick = () => {
-    if (b.dataset.logoclear === 'conf') state.assets.confLogo = null; else state.assets.rpaLogo = null;
-    persist(); closeModal(); openSettingsModal(); renderAll();
-  });
-  ['conf', 'rpa'].forEach(kind => {
-    const inp = $('#f_' + kind, veil); if (!inp) return;
-    inp.onchange = async (e) => {
-      const f = e.target.files[0]; if (!f) return;
+  /* logo upload / removal updates the slot in place — closing and reopening
+     the modal here would silently discard any unsaved wording edits */
+  const wireSlot = (kind) => {
+    const wrap = $(`[data-slotwrap="${kind}"]`, veil); if (!wrap) return;
+    $('[data-logo]', wrap).onclick = () => $('#f_' + kind, wrap).click();
+    const clr = $('[data-logoclear]', wrap);
+    if (clr) clr.onclick = () => {
+      if (kind === 'conf') state.assets.confLogo = null; else state.assets.rpaLogo = null;
+      persist(); renderAll();
+      wrap.innerHTML = slotInner(kind); wireSlot(kind);
+      toast('Logo removed');
+    };
+    $('#f_' + kind, wrap).onchange = async (e) => {
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
       try {
         const data = await processImage(f, 560, 'image/png');
         if (kind === 'conf') state.assets.confLogo = data; else state.assets.rpaLogo = data;
-        persist(); closeModal(); openSettingsModal(); renderAll(); initControlHeaderMark();
+        persist(); renderAll();
+        wrap.innerHTML = slotInner(kind); wireSlot(kind);
         toast('Logo saved');
       } catch (err) { toast('⚠ Could not read that image'); }
     };
-  });
+  };
+  wireSlot('conf'); wireSlot('rpa');
   $('#sSample', veil).onclick = () => {
     state.people = state.people.concat(SAMPLE_PEOPLE.map(p => ({ id: uid(), photo: null, ...p })));
     persist(); closeModal(); renderAll(); toast('Sample line-up added');
@@ -1540,7 +1636,7 @@ function openSettingsModal() {
       startDate: $('#sStart', veil).value,
       totalDays: +$('#sDays', veil).value || 4,
       dayOverride: $('#sDayOv', veil).value,
-      sessionsOverride: $('#sSess', veil).value,
+      sessionsOverride: $('#sSess', veil).value.trim(),
     });
     persist(); closeModal(); renderAll(); toast('Settings saved');
   };
@@ -1571,10 +1667,27 @@ function importJSON(e) {
       const d = JSON.parse(fr.result);
       if (!d || !Array.isArray(d.people)) throw new Error('bad shape');
       if (!confirm(`Import ${d.people.length} people${d.settings ? ' + settings' : ''}? This replaces the current data.`)) return;
-      state.people = d.people.map(p => ({ id: p.id || uid(), honorific: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null, ...p }));
-      if (d.settings) state.settings = Object.assign(defaultState(false).settings, d.settings);
-      if (d.assets) state.assets = Object.assign({ confLogo: null, rpaLogo: null }, d.assets);
-      persist(); renderAll(); initControlHeaderMark();
+      /* sanitize: only object entries, string fields, unique ids, data-URL photos */
+      const str = v => (typeof v === 'string' ? v : (typeof v === 'number' && isFinite(v) ? String(v) : ''));
+      const dataUrl = v => (typeof v === 'string' && /^data:image\//.test(v) ? v : null);
+      const seen = new Set();
+      state.people = d.people
+        .filter(p => p && typeof p === 'object' && !Array.isArray(p))
+        .map(p => {
+          let id = str(p.id) || uid();
+          while (seen.has(id)) id = uid();
+          seen.add(id);
+          return {
+            id,
+            honorific: str(p.honorific), name: str(p.name), org: str(p.org),
+            topic: str(p.topic), session: str(p.session), slot: str(p.slot),
+            category: str(p.category) || 'Speaker', bio: str(p.bio),
+            photo: dataUrl(p.photo),
+          };
+        });
+      if (d.settings && typeof d.settings === 'object') state.settings = Object.assign(defaultState(false).settings, d.settings);
+      if (d.assets && typeof d.assets === 'object') state.assets = { confLogo: dataUrl(d.assets.confLogo), rpaLogo: dataUrl(d.assets.rpaLogo) };
+      persist(); renderAll();
       toast(`Imported ${state.people.length} people`);
     } catch (err) { toast('⚠ That file is not a valid conference-data JSON export'); }
   };
@@ -1586,6 +1699,10 @@ function importJSON(e) {
    ════════════════════════════════════════════════════════════════ */
 loadState();
 if (IS_DISPLAY) initDisplay(); else initControl();
+/* switching between #display and control needs a fresh boot */
+window.addEventListener('hashchange', () => {
+  if (/display/.test(location.hash) !== IS_DISPLAY) location.reload();
+});
 </script>
 </body>
 </html>
