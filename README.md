@@ -34,27 +34,33 @@ The display can also be opened manually: `index.html#display`.
 | Scene | What it shows | Live controls |
 |---|---|---|
 | **① Title / Welcome** | Event name, theme, dates, venue, conference + RPA logos | wording editable in Settings |
-| **② Panel Grid** | Everyone (or one category) as circular gold-ring photos with name, affiliation and topic — IAEA-panel style | group picker + custom heading |
-| **③ Speaker Spotlight** | One person full-screen: large photo, name, title, topic, session chip and bio | **◀ Prev / Next ▶** steps the queue (also ← / → keys); every person row has an instant **Spotlight** button |
-| **④ Countdown & Stats** | Live countdown to the next session + Day X of 4, session count, speaker count, theme | target time, session label, quick-set buttons (+5/+10/+15/+30 min, top of next hour) |
+| **② Panel Grid** | A group as circular gold-ring photos with name, affiliation and topic — IAEA-panel style. Groups: **All · All Speakers · RPA / Internal · Moderators · any Session (1–4, Official Opening, Side Event) · any category**. Session views list that session's speakers *and* moderators in programme order, each labelled with their role | group picker + custom heading |
+| **③ Speaker Spotlight** | One person full-screen: large photo, name, title, topic, session chip and bio. Pick a session as the queue to step through its programme in time order — the topic shown follows that session's engagement | **◀ Prev / Next ▶** steps the queue (also ← / → keys); every person row has an instant **Spotlight** button |
+| **④ Countdown & Stats** | Live countdown to the next session + Day X of 4, session count, speaker count, theme | target time, session label, quick-set buttons (+5/+10/+15/+30 min, top of next hour) — quick-sets apply instantly while the countdown is live |
 
 **○ Blackout** fades the display to black instantly (and back).
 
 ## People & data
 
-Per person: honorific, full name, organisation, topic, session, time slot,
-photo (uploaded locally, auto-resized, shown in a circular gold frame), bio and
-a category tag (Keynote, Speaker, Panellist, RPA/RPO Official, Organising
-Committee — or type your own). Add / edit / delete / reorder from the People
-panel; search and filter by category.
+Per person: honorific, full name, organisation, headline topic, session, time
+slot, photo (uploaded locally, auto-resized, shown in a circular gold frame),
+bio, a category tag (Keynote, Speaker, Moderator, Panellist, RPA/RPO Official,
+Organising Committee — or type your own) **and programme roles**: one row per
+engagement (`session + role + topic + slot`), so one person can speak in
+Session 1, moderate Session 2 and speak again in Session 4 with a single card.
+The RPA / Internal, Moderators and Session views are computed from these roles.
+Add / edit / delete / reorder from the People panel; search and filter by any
+group.
 
+- **Pre-loaded line-up** — the full official 8th RPO Conference programme
+  (all named speakers and moderators, Sessions 1–4, Official Opening and the
+  RAIS/e-licensing side event) is baked in: it loads on first run and can be
+  restored any time via **Settings → Load official programme line-up**.
 - **Persistence** — everything is saved in the browser (`localStorage`)
   automatically, including photos and logos.
 - **Export / Import** — the header buttons download / restore the full dataset
-  as JSON (people + photos + settings + logos). Export a backup before the
-  event and carry it on a USB stick.
-- First run loads a sample line-up so every scene demos immediately —
-  delete the samples or **Clear ALL data** in Settings.
+  as JSON (people + roles + photos + settings + logos). Export a backup before
+  the event and carry it on a USB stick.
 
 ## Logos
 

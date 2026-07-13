@@ -440,6 +440,7 @@ body.mode-display.is-fs .disp-banner { display:none; }
 .chip.c-panellist { background:#DDEBDD; color:#2E6B2E; }
 .chip.c-official  { background:#E5E0F0; color:#584B7E; }
 .chip.c-committee { background:#F0E2D8; color:#8A5A34; }
+.chip.c-moderator { background:#DCE9E9; color:#2E6B6B; }
 .pp-actions { display:flex; gap:5px; align-items:center; flex:none; }
 .icobtn {
   border:1px solid transparent; background:none; border-radius:6px; padding:5px 7px; font-size:13px;
@@ -471,6 +472,8 @@ body.mode-display.is-fs .disp-banner { display:none; }
 .photo-drop {
   display:flex; align-items:center; gap:16px;
 }
+.role-row { align-items:flex-end; }
+.role-row .r-del { margin-bottom:7px; }
 .photo-drop .ph { width:84px; height:84px; }
 .photo-drop .ph-init { font-size:26px; }
 .settings-sec { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.15em; font-size:11px;
@@ -577,17 +580,91 @@ function processImage(file, maxDim = 640, type = 'image/jpeg', quality = 0.85) {
 /* ════════════════════════════════════════════════════════════════
    1. STATE — data model, defaults, sample data, persistence
    ════════════════════════════════════════════════════════════════ */
-const CATEGORIES = ['Keynote', 'Speaker', 'Panellist', 'RPA/RPO Official', 'Organising Committee'];
-const HONORIFICS = ['Prof', 'Dr', 'Mr', 'Mrs', 'Ms', 'Madam', 'Eng', 'Hon'];
+const CATEGORIES = ['Keynote', 'Speaker', 'Moderator', 'Panellist', 'RPA/RPO Official', 'Organising Committee'];
+const HONORIFICS = ['Prof', 'Dr', 'Mr', 'Mrs', 'Ms', 'Madam', 'Eng', 'Hon', 'Col Dr'];
 
-const SAMPLE_PEOPLE = [
-  { honorific:'Dr',    name:'Chanda Mwale',   org:'Radiation Protection Authority of Zambia', topic:'From Compliance to Culture: The Next Decade of Radiation Safety in Zambia', session:'Opening Session', slot:'Tue 09:00', category:'Keynote', bio:'Dr Chanda Mwale is the Director of Radiation Safety at the Radiation Protection Authority of Zambia, with over twenty years of experience in regulatory oversight of medical radiation facilities. He has led the national programme for licensing and inspection of diagnostic radiology, radiotherapy and nuclear medicine services, and championed the shift from compliance-driven regulation to a genuine culture of safety across the health sector.' },
-  { honorific:'Prof',  name:'Naomi Banda',    org:'University Teaching Hospitals, Lusaka',    topic:'Optimising Patient Dose in CT: Findings from a Multi-Centre Audit', session:'Session 2', slot:'Tue 11:30', category:'Speaker', bio:'Prof Naomi Banda is a consultant radiologist and professor of medical imaging at the University Teaching Hospitals in Lusaka. Her research focuses on dose optimisation in computed tomography and the establishment of national diagnostic reference levels for Zambia.' },
-  { honorific:'Mr',    name:'Joseph Phiri',   org:'Cancer Diseases Hospital, Lusaka',         topic:'Quality Assurance in Radiotherapy: Practical Lessons from the Clinic', session:'Session 2', slot:'Tue 12:00', category:'Speaker', bio:'Mr Joseph Phiri is the chief medical physicist at the Cancer Diseases Hospital, where he oversees quality assurance for external beam radiotherapy and brachytherapy. He serves on several national committees on radiation safety in medicine.' },
-  { honorific:'Ms',    name:'Grace Tembo',    org:'Ndola Teaching Hospital',                  topic:'Building a Safety Culture in the Imaging Department', session:'Panel Discussion', slot:'Wed 14:00', category:'Panellist', bio:'Ms Grace Tembo is the principal radiographer at Ndola Teaching Hospital and a certified Radiation Protection Officer. She has pioneered peer-learning programmes that embed radiation safety practice among frontline imaging staff.' },
-  { honorific:'Dr',    name:'Emmanuel Zulu',  org:'Radiation Protection Authority of Zambia', topic:'Regulatory Update: Licensing and Inspection Outlook 2026–2028', session:'Session 4', slot:'Wed 09:30', category:'RPA/RPO Official', bio:'Dr Emmanuel Zulu heads the Authorisation and Inspection Unit of the RPA. He coordinates the national inspection schedule for medical facilities and is leading the roll-out of the new graded-approach licensing framework.' },
-  { honorific:'Madam', name:'Ruth Chirwa',    org:'Livingstone Central Hospital',             topic:'Conference Coordination & Delegate Liaison', session:'—', slot:'', category:'Organising Committee', bio:'Madam Ruth Chirwa chairs the local organising committee for the 8th RPO Conference. She is the senior Radiation Protection Officer at Livingstone Central Hospital and has hosted three previous national radiation safety workshops.' },
+/* ── The official 8th RPO Conference programme line-up ─────────────
+   One entry per person; `roles` lists every engagement they have in
+   the programme ({session, role, topic, slot}) and powers the
+   Session / Moderators / RPA group views. `topic`/`session`/`slot`
+   at the top level are the person's headline engagement (shown on
+   the All grid and the default spotlight).                          */
+const PROGRAMME_PEOPLE = [
+  { honorific:'Ms', name:'Hannah Kanini', org:'', category:'Moderator',
+    topic:'Moderator — Official Opening Ceremony', session:'Official Opening', slot:'Tue 09:00', bio:'',
+    roles:[{ session:'Official Opening', role:'Moderator', topic:'Official Opening Ceremony', slot:'Tue 09:00' }] },
+  { honorific:'Mr', name:'Miyombo E. Miyombo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'Beyond Compliance: Using Regulatory Frameworks as a Foundation for Radiation Safety Excellence', session:'Session 4', slot:'Fri 09:15', bio:'',
+    roles:[
+      { session:'Session 1', role:'Moderator', topic:'', slot:'Tue 11:00' },
+      { session:'Session 4', role:'Speaker', topic:'Beyond Compliance: Using Regulatory Frameworks as a Foundation for Radiation Safety Excellence', slot:'Fri 09:15' },
+    ] },
+  { honorific:'Ms', name:'Melody M. Nsofwa', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'Overview on Radiation Safety Culture', session:'Session 1', slot:'Tue 11:00', bio:'',
+    roles:[{ session:'Session 1', role:'Speaker', topic:'Overview on Radiation Safety Culture', slot:'Tue 11:00' }] },
+  { honorific:'Ms', name:'Luuma Michelo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'Management Systems and Structures Required for an Effective Radiation Safety Culture', session:'Session 1', slot:'Tue 11:20', bio:'',
+    roles:[
+      { session:'Session 1', role:'Speaker', topic:'Management Systems and Structures Required for an Effective Radiation Safety Culture', slot:'Tue 11:20' },
+      { session:'Session 2', role:'Panel Moderator', topic:'Panel: Building a Radiation Safety Culture — From Student Education to Clinical Practice in Zambia', slot:'Wed 11:40' },
+      { session:'Session 3', role:'Moderator', topic:'', slot:'Thu 09:00' },
+    ] },
+  { honorific:'Mr', name:'Caleb Chitumbo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'IAEA RAIS + e-Licensing System — Challenges and Experiences', session:'Side Event', slot:'Tue 12:15', bio:'',
+    roles:[{ session:'Side Event', role:'Speaker', topic:'IAEA RAIS + e-Licensing System — Challenges and Experiences', slot:'Tue 12:15' }] },
+  { honorific:'Mr', name:'Emmanuel Lungu', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'IAEA RAIS + e-Licensing System — Challenges and Experiences', session:'Side Event', slot:'Tue 12:15', bio:'',
+    roles:[{ session:'Side Event', role:'Speaker', topic:'IAEA RAIS + e-Licensing System — Challenges and Experiences', slot:'Tue 12:15' }] },
+  { honorific:'Ms', name:'Nangoma Hampuwo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'Promotion of Radiation Safety Culture', session:'Session 1', slot:'Tue 14:00', bio:'',
+    roles:[
+      { session:'Session 1', role:'Speaker', topic:'Promotion of Radiation Safety Culture', slot:'Tue 14:00' },
+      { session:'Session 2', role:'Moderator', topic:'', slot:'Wed 09:00' },
+      { session:'Session 2', role:'Panel Moderator', topic:'Panel: CT Dose Optimisation in Zambia', slot:'Wed 09:50' },
+      { session:'Session 4', role:'Speaker', topic:'2025 Compliance of Medical Facilities', slot:'Fri 09:40' },
+    ] },
+  { honorific:'Mr', name:'Martin C. Kabanda', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'Leadership and Personnel Behaviour for an Effective Radiation Safety Culture', session:'Session 1', slot:'Tue 14:20', bio:'',
+    roles:[
+      { session:'Session 1', role:'Speaker', topic:'Leadership and Personnel Behaviour for an Effective Radiation Safety Culture', slot:'Tue 14:20' },
+      { session:'Session 3', role:'Panel Moderator', topic:'Panel: The RPO as Safety Champion — Integrating Technical Expertise with Human and Behavioural Science', slot:'Thu 12:00' },
+      { session:'Session 4', role:'Moderator', topic:'', slot:'Fri 09:00' },
+    ] },
+  { honorific:'Dr', name:'Stephen Kafwimbi', org:'University of Zambia — School of Health Sciences', category:'Speaker',
+    topic:'From Compliance to Culture: Navigating Systematic Barriers to CT Dose Optimisation and Image Quality Assessment in Zambia', session:'Session 2', slot:'Wed 09:10', bio:'',
+    roles:[{ session:'Session 2', role:'Speaker', topic:'From Compliance to Culture: Navigating Systematic Barriers to CT Dose Optimisation and Image Quality Assessment in Zambia', slot:'Wed 09:10' }] },
+  { honorific:'Mr', name:'Mumba Chilimboyi', org:'National Heart Hospital', category:'Speaker',
+    topic:'Radiation Protection in Paediatric Computed Tomography Examinations', session:'Session 2', slot:'Wed 09:30', bio:'',
+    roles:[{ session:'Session 2', role:'Speaker', topic:'Radiation Protection in Paediatric Computed Tomography Examinations', slot:'Wed 09:30' }] },
+  { honorific:'Ms', name:'Hellen Namwaba', org:'Occupational Health and Safety Institute, Solwezi', category:'Speaker',
+    topic:'Building and Sustaining a Radiation Safety Culture in Clinical Environments', session:'Session 2', slot:'Wed 11:00', bio:'',
+    roles:[{ session:'Session 2', role:'Speaker', topic:'Building and Sustaining a Radiation Safety Culture in Clinical Environments', slot:'Wed 11:00' }] },
+  { honorific:'Ms', name:'Eves Bbabbi', org:'St. Luke Mission Hospital', category:'Speaker',
+    topic:'Radiation Protection Knowledge and Awareness among Clinical Officer Students, LMMU', session:'Session 2', slot:'Wed 11:20', bio:'',
+    roles:[{ session:'Session 2', role:'Speaker', topic:'Radiation Protection Knowledge and Awareness among Clinical Officer Students, LMMU', slot:'Wed 11:20' }] },
+  { honorific:'Mr', name:'Muleya Moshious', org:'Victoria Hospital, Lusaka', category:'Speaker',
+    topic:'The Evolving Role of the Radiation Protection Officer in Modern Healthcare', session:'Session 3', slot:'Thu 09:15', bio:'',
+    roles:[{ session:'Session 3', role:'Speaker', topic:'The Evolving Role of the Radiation Protection Officer in Modern Healthcare', slot:'Thu 09:15' }] },
+  { honorific:'Prof', name:'Manyika Kabuswa Davy', org:'University of Lusaka', category:'Speaker',
+    topic:'Human and Behavioural Dimensions in Radiation Safety', session:'Session 3', slot:'Thu 09:45', bio:'',
+    roles:[{ session:'Session 3', role:'Speaker', topic:'Human and Behavioural Dimensions in Radiation Safety', slot:'Thu 09:45' }] },
+  { honorific:'Mr', name:'Sibeso Kabeleko', org:'Lewanika General Hospital', category:'Moderator',
+    topic:'Panel Moderator — The RPO as Safety Champion', session:'Session 3', slot:'Thu 10:10', bio:'',
+    roles:[{ session:'Session 3', role:'Panel Moderator', topic:'Panel: The RPO as Safety Champion — Integrating Technical Expertise with Human and Behavioural Science', slot:'Thu 10:10' }] },
+  { honorific:'Dr', name:'Juilet Mulopwe', org:'University Teaching Hospital', category:'Speaker',
+    topic:'Embedding Radiation Safety Culture into Everyday Clinical Practice: Practical Lessons from a Tertiary Referral Hospital', session:'Session 3', slot:'Thu 11:00', bio:'',
+    roles:[{ session:'Session 3', role:'Speaker', topic:'Embedding Radiation Safety Culture into Everyday Clinical Practice: Practical Lessons from a Tertiary Referral Hospital', slot:'Thu 11:00' }] },
+  { honorific:'Col Dr', name:'Ruth W. Phiri', org:'Maina Soko Medical Centre', category:'Speaker',
+    topic:'Myths in Radiation Safety Culture — Changing Beliefs: Changing Behaviour and Protecting Lives', session:'Session 3', slot:'Thu 11:30', bio:'',
+    roles:[{ session:'Session 3', role:'Speaker', topic:'Myths in Radiation Safety Culture — Changing Beliefs: Changing Behaviour and Protecting Lives', slot:'Thu 11:30' }] },
+  { honorific:'Mr', name:'James Simoko', org:'Radiation Protection Authority', category:'RPA/RPO Official',
+    topic:'Quality Assurance and Quality Control in Diagnostic Radiography: The Role of Human and Behavioural Factors', session:'Session 3', slot:'Thu 14:20', bio:'',
+    roles:[
+      { session:'Session 3', role:'Speaker', topic:'Quality Assurance and Quality Control in Diagnostic Radiography: The Role of Human and Behavioural Factors', slot:'Thu 14:20' },
+      { session:'Session 3', role:'Moderator', topic:'Group Presentations — Experience Sharing in QC in Diagnostic Radiography', slot:'Thu 15:30' },
+    ] },
 ];
+const clonePerson = p => ({ id: uid(), photo: null, ...p, roles: (p.roles || []).map(r => ({ ...r })) });
 
 function defaultState(withSamples) {
   return {
@@ -609,7 +686,7 @@ function defaultState(withSamples) {
       countdownLabel: 'Opening Ceremony',
     },
     assets: { confLogo: null, rpaLogo: null },
-    people: withSamples ? SAMPLE_PEOPLE.map(p => ({ id: uid(), photo: null, ...p })) : [],
+    people: withSamples ? PROGRAMME_PEOPLE.map(clonePerson) : [],
     live: { scene: 'title', params: {}, blackout: false, pushedAt: 0 },
   };
 }
@@ -656,8 +733,42 @@ function allCategories() {
   state.people.forEach(p => p.category && set.add(p.category));
   return [...set];
 }
-function peopleInCategory(cat) {
-  return (!cat || cat === 'All') ? state.people.slice() : state.people.filter(p => p.category === cat);
+
+/* ── Groups: virtual views over people, powered by their roles ── */
+const GROUP_ALL = 'All', GROUP_SPEAKERS = 'All Speakers', GROUP_RPA = 'RPA / Internal', GROUP_MODS = 'Moderators';
+const SESSION_ORDER = ['Official Opening', 'Session 1', 'Session 2', 'Session 3', 'Session 4', 'Side Event'];
+const rolesOf = p => (Array.isArray(p.roles) ? p.roles : []);
+const isModRole = r => /moderator/i.test(r.role || '');
+const moderatorRoles = p => rolesOf(p).filter(isModRole);
+const speakerRoles = p => rolesOf(p).filter(r => !isModRole(r));
+const isRPA = p => /radiation protection authority/i.test(p.org || '');
+function allSessions() {
+  const set = new Set();
+  state.people.forEach(p => rolesOf(p).forEach(r => { if ((r.session || '').trim()) set.add(r.session.trim()); }));
+  return [...set].sort((a, b) => {
+    const ia = SESSION_ORDER.indexOf(a), ib = SESSION_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+}
+const DAY_IDX = { mon:1, tue:2, wed:3, thu:4, fri:5, sat:6, sun:7 };
+function slotKey(slot) {
+  const m = /(?:(mon|tue|wed|thu|fri|sat|sun)[a-z]*\s*)?(\d{1,2})[:.h](\d{2})/i.exec(slot || '');
+  if (!m) return 9e9;
+  return (m[1] ? DAY_IDX[m[1].slice(0, 3).toLowerCase()] : 8) * 1e4 + (+m[2]) * 100 + (+m[3]);
+}
+function peopleInGroup(key) {
+  if (!key || key === GROUP_ALL) return state.people.slice();
+  if (key === GROUP_SPEAKERS) return state.people.filter(p => speakerRoles(p).length || (!rolesOf(p).length && p.topic));
+  if (key === GROUP_RPA) return state.people.filter(isRPA);
+  if (key === GROUP_MODS) return state.people.filter(p => moderatorRoles(p).length);
+  if (allSessions().includes(key)) {
+    const first = p => Math.min(...rolesOf(p).filter(r => r.session === key).map(r => slotKey(r.slot)));
+    return state.people.filter(p => rolesOf(p).some(r => r.session === key)).sort((a, b) => first(a) - first(b));
+  }
+  return state.people.filter(p => p.category === key);
+}
+function validGroupKeys() {
+  return [GROUP_ALL, GROUP_SPEAKERS, GROUP_RPA, GROUP_MODS, ...allSessions(), ...allCategories()];
 }
 function personById(id) { return state.people.find(p => p.id === id) || null; }
 function fullName(p) { return [p.honorific, p.name].filter(Boolean).join(' '); }
@@ -668,7 +779,8 @@ function sessionsCount() {
   const o = state.settings.sessionsOverride;
   if (o !== '' && o != null && !isNaN(+o)) return +o;
   const set = new Set();
-  state.people.forEach(p => { const s = (p.session || '').trim(); if (s && s !== '—') set.add(s.toLowerCase()); });
+  const add = s => { s = (s || '').trim(); if (s && s !== '—' && /session/i.test(s)) set.add(s.toLowerCase()); };
+  state.people.forEach(p => { add(p.session); rolesOf(p).forEach(r => add(r.session)); });
   return set.size;
 }
 function dayOfConference() {
@@ -678,13 +790,24 @@ function dayOfConference() {
   const d = Math.floor((Date.now() - start.getTime()) / 864e5) + 1;
   return Math.max(1, Math.min(d, s.totalDays || 4));
 }
-function gridTitleFor(cat) {
-  const map = { 'All': 'Our Speakers', 'Keynote': 'Keynote Speakers', 'Speaker': 'Speakers',
+function gridTitleFor(key) {
+  const map = {
+    'All': 'Our Speakers & Moderators',
+    'All Speakers': 'Our Speakers',
+    'RPA / Internal': 'Radiation Protection Authority — Speakers',
+    'Moderators': 'Session & Panel Moderators',
+    'Official Opening': 'Official Opening',
+    'Session 1': 'Session 1 — Safety & Security Culture',
+    'Session 2': 'Session 2 — Clinical Safety Culture & CT Dose Optimisation',
+    'Session 3': 'Session 3 — Human Factors & the Evolving RPO Role',
+    'Session 4': 'Session 4 — Compliance & Closing',
+    'Side Event': 'Conference Side Event — RAIS & e-Licensing',
+    'Keynote': 'Keynote Speakers', 'Speaker': 'Speakers', 'Moderator': 'Moderators',
     'Panellist': 'Panellists', 'RPA/RPO Official': 'RPA & RPO Officials', 'Organising Committee': 'Organising Committee' };
-  return map[cat] || cat;
+  return map[key] || key;
 }
 function catChipClass(cat) {
-  const map = { 'Keynote':'c-keynote','Speaker':'c-speaker','Panellist':'c-panellist','RPA/RPO Official':'c-official','Organising Committee':'c-committee' };
+  const map = { 'Keynote':'c-keynote','Speaker':'c-speaker','Moderator':'c-moderator','Panellist':'c-panellist','RPA/RPO Official':'c-official','Organising Committee':'c-committee' };
   return map[cat] || '';
 }
 
@@ -740,15 +863,34 @@ function gridMetrics(n) {
   else cols = 8;
   const rows = Math.ceil(n / cols);
   const tier = Math.min(rows, 6);
-  const ph = [262, 205, 148, 116, 94, 78][tier - 1];
+  const ph = [262, 205, 142, 116, 94, 78][tier - 1];
   const nm = [30, 26, 21, 18, 16, 14][tier - 1];
   const gapy = rows <= 2 ? 36 : rows <= 4 ? 22 : 14;
   return { cols, rows, ph, nm, gapy, dense: rows >= 4 };
 }
 
+/* What the third line of a grid card says, given the group being shown:
+   session views show that session's role (time · topic, or moderator duty);
+   the Moderators view lists what they moderate; otherwise the headline topic. */
+function gridLineFor(p, key) {
+  if (key === GROUP_MODS) {
+    const sess = [...new Set(moderatorRoles(p).map(r => (r.session || '').trim()).filter(Boolean))];
+    return sess.length ? 'Moderates: ' + sess.join(' · ') : (p.topic || '');
+  }
+  const rs = rolesOf(p).filter(r => r.session === key);
+  if (rs.length) {
+    return rs.map(r => {
+      if (isModRole(r)) return r.topic || (r.role === 'Panel Moderator' ? 'Panel Moderator' : 'Moderator');
+      const time = (r.slot || '').replace(/^[A-Za-z]+\s+/, '');
+      return (time ? time + ' · ' : '') + (r.topic || p.topic || '');
+    }).join(' · ');
+  }
+  return p.topic || '';
+}
+
 function sceneGrid(params) {
   const cat = params.category || 'All';
-  const people = peopleInCategory(cat);
+  const people = peopleInGroup(cat);
   const title = params.title || gridTitleFor(cat);
   const m = gridMetrics(people.length);
   const cells = people.map((p, i) => `
@@ -756,7 +898,7 @@ function sceneGrid(params) {
       ${photoCircleHTML(p)}
       <div class="c-name">${esc(fullName(p))}</div>
       <div class="c-org">${esc(p.org || '')}</div>
-      <div class="c-topic">${esc(p.topic || '')}</div>
+      <div class="c-topic">${esc(gridLineFor(p, cat))}</div>
     </div>`).join('');
   const empty = `<div class="tagline" style="font-size:34px">No people in this group yet — add them in the control panel.</div>`;
   return `<div class="sc-grid ${m.dense ? 'dense' : ''}">
@@ -781,18 +923,24 @@ function sceneSpotlight(params) {
   if (!p) return `<div class="sc-title"><div class="tagline" style="font-size:34px">Add a person in the control panel to use the spotlight.</div></div>`;
   const bioLen = (p.bio || '').length;
   const bioCls = bioLen > 950 ? 'vlong' : bioLen > 620 ? 'long' : '';
-  const chip = [p.session, p.slot].filter(x => x && x !== '—').join(' · ');
+  /* when spotlighting from a session queue, show THAT session's engagement
+     (a speaker's talk in that session, or their moderator duty) */
+  const rs = params.queue ? rolesOf(p).filter(r => r.session === params.queue) : [];
+  const role = rs.find(r => !isModRole(r)) || rs[0] || null;
+  const topic = role ? (role.topic || (isModRole(role) ? `${role.role || 'Moderator'} — ${role.session}` : p.topic)) : p.topic;
+  const chip = (role ? [role.session, role.slot] : [p.session, p.slot]).filter(x => x && x !== '—').join(' · ');
+  const cat = role && isModRole(role) && !speakerRoles(p).length ? 'Moderator' : (p.category || 'Speaker');
   return `<div class="sc-spot">
     <div class="s-left">
       <div class="a" style="--i:0">${photoCircleHTML(p)}</div>
       ${chip ? `<div class="s-chip a" style="--i:4">${esc(chip)}</div>` : ''}
     </div>
     <div class="s-right">
-      <div class="s-cat label a" style="--i:1">${esc(p.category || 'Speaker')}</div>
+      <div class="s-cat label a" style="--i:1">${esc(cat)}</div>
       <div class="s-name headline a" style="--i:1">${esc(fullName(p))}</div>
       <div class="s-org a" style="--i:2">${esc(p.org || '')}</div>
       <hr class="gold-rule s-rule a" style="--i:2">
-      ${p.topic ? `<div class="s-topic tagline a" style="--i:3" >“${esc(p.topic)}”</div>` : ''}
+      ${topic ? `<div class="s-topic tagline a" style="--i:3" >“${esc(topic)}”</div>` : ''}
       ${p.bio ? `<div class="s-bio ${bioCls} a" style="--i:4">${esc(p.bio)}</div>` : ''}
     </div>
   </div>`;
@@ -1247,9 +1395,12 @@ function renderSceneTabs() {
   $('#liveName') && ($('#liveName').textContent = 'PREVIEW · LIVE: ' + sceneLabel(state.live.scene) + (state.live.blackout ? ' · BLACKOUT' : ''));
 }
 
-function catOptions(selected, withAll = true) {
-  const cats = (withAll ? ['All'] : []).concat(allCategories());
-  return cats.map(c => `<option value="${esc(c)}" ${c === selected ? 'selected' : ''}>${esc(c)}</option>`).join('');
+function groupOptions(selected) {
+  const opt = v => `<option value="${esc(v)}" ${v === selected ? 'selected' : ''}>${esc(v)}</option>`;
+  const sessions = allSessions();
+  return `<optgroup label="Everyone">${[GROUP_ALL, GROUP_SPEAKERS, GROUP_RPA, GROUP_MODS].map(opt).join('')}</optgroup>` +
+    (sessions.length ? `<optgroup label="Sessions">${sessions.map(opt).join('')}</optgroup>` : '') +
+    `<optgroup label="Categories">${allCategories().map(opt).join('')}</optgroup>`;
 }
 
 function renderSceneConfig() {
@@ -1264,13 +1415,13 @@ function renderSceneConfig() {
   }
 
   if (t === 'grid') {
-    if (ui.gridCat && ui.gridCat !== 'All' && !allCategories().includes(ui.gridCat)) ui.gridCat = 'All';
+    if (ui.gridCat && !validGroupKeys().includes(ui.gridCat)) ui.gridCat = 'All';
     const sel = ui.gridCat || 'All';
-    const n = peopleInCategory(sel).length;
+    const n = peopleInGroup(sel).length;
     host.innerHTML = `
-      <div class="desc">A grid of circular photos with name, affiliation and topic — show everyone, or one group (IAEA-panel style).</div>
+      <div class="desc">A grid of circular photos with name, affiliation and topic — show everyone, one group (RPA / Moderators), one session's line-up, or one category.</div>
       <div class="frow">
-        <div class="fld"><label>Group</label><select id="gridCat">${catOptions(sel)}</select></div>
+        <div class="fld"><label>Group</label><select id="gridCat">${groupOptions(sel)}</select></div>
         <div class="fld grow"><label>Heading (optional — defaults to the group name)</label>
           <input id="gridTitle" placeholder="${esc(gridTitleFor(sel))}" value="${esc(ui.gridTitle || '')}"></div>
       </div>
@@ -1284,15 +1435,15 @@ function renderSceneConfig() {
   }
 
   if (t === 'spotlight') {
-    if (ui.spotQueue && ui.spotQueue !== 'All' && !allCategories().includes(ui.spotQueue)) ui.spotQueue = 'All';
+    if (ui.spotQueue && !validGroupKeys().includes(ui.spotQueue)) ui.spotQueue = 'All';
     const queueCat = ui.spotQueue || 'All';
-    const queue = peopleInCategory(queueCat);
+    const queue = peopleInGroup(queueCat);
     if (!ui.spotId || !queue.some(p => p.id === ui.spotId)) ui.spotId = (queue[0] || {}).id;
     const cur = personById(ui.spotId);
     host.innerHTML = `
-      <div class="desc">Introduce one person full-screen: large photo, name, topic and bio. Use <b>Next ▶</b> (or ← / → keys while live) to step through the queue.</div>
+      <div class="desc">Introduce one person full-screen: large photo, name, topic and bio. Pick a session as the queue to step through its programme in time order with <b>Next ▶</b> (or ← / → keys while live).</div>
       <div class="frow">
-        <div class="fld"><label>Queue (group)</label><select id="spotQueue">${catOptions(queueCat)}</select></div>
+        <div class="fld"><label>Queue (group)</label><select id="spotQueue">${groupOptions(queueCat)}</select></div>
         <div class="fld grow"><label>Person</label><select id="spotPerson">
           ${queue.map(p => `<option value="${esc(p.id)}" ${p.id === ui.spotId ? 'selected' : ''}>${esc(fullName(p))} — ${esc(p.topic || p.org || '')}</option>`).join('')}
         </select></div>
@@ -1360,7 +1511,7 @@ function renderSceneConfig() {
 
 function stepSpotlight(dir) {
   const queueCat = (state.live.scene === 'spotlight' && state.live.params.queue) || ui.spotQueue || 'All';
-  const queue = peopleInCategory(queueCat);
+  const queue = peopleInGroup(queueCat);
   if (!queue.length) return;
   const curId = (state.live.scene === 'spotlight' && state.live.params.personId) || ui.spotId;
   let idx = queue.findIndex(p => p.id === curId);
@@ -1373,21 +1524,23 @@ function stepSpotlight(dir) {
 /* ── People manager ───────────────────────────────────────────── */
 function renderPeople() {
   const list = $('#ppList'); if (!list) return;
-  /* the selected category may have vanished (import / delete / wipe) */
-  if (ui.catFilter !== 'All' && !allCategories().includes(ui.catFilter)) ui.catFilter = 'All';
+  /* the selected group may have vanished (import / delete / wipe) */
+  if (ui.catFilter !== 'All' && !validGroupKeys().includes(ui.catFilter)) ui.catFilter = 'All';
   const q = ui.q.trim().toLowerCase();
+  const inGroup = new Set(peopleInGroup(ui.catFilter).map(p => p.id));
   const rows = state.people
     .map((p, idx) => ({ p, idx }))
-    .filter(({ p }) => (ui.catFilter === 'All' || p.category === ui.catFilter))
-    .filter(({ p }) => !q || [p.name, p.org, p.topic, p.category, p.session].join(' ').toLowerCase().includes(q));
+    .filter(({ p }) => inGroup.has(p.id))
+    .filter(({ p }) => !q || [p.name, p.org, p.topic, p.category, p.session,
+      ...rolesOf(p).flatMap(r => [r.session, r.role, r.topic])].join(' ').toLowerCase().includes(q));
 
   $('#ppCount').textContent = `${state.people.length} total`;
   const filt = $('#ppCatFilter');
   const keep = ui.catFilter;
-  filt.innerHTML = catOptions(keep);
+  filt.innerHTML = groupOptions(keep);
 
   if (!rows.length) {
-    list.innerHTML = `<div class="pp-empty">${state.people.length ? 'No one matches your search.' : 'No people yet.<br>Click <b>＋ Add person</b> to enter your first speaker,<br>or load the sample line-up from Settings.'}</div>`;
+    list.innerHTML = `<div class="pp-empty">${state.people.length ? 'No one matches your search.' : 'No people yet.<br>Click <b>＋ Add person</b> to enter your first speaker,<br>or load the official programme line-up from Settings.'}</div>`;
     return;
   }
   list.innerHTML = rows.map(({ p, idx }) => `
@@ -1395,7 +1548,7 @@ function renderPeople() {
       ${photoCircleHTML(p)}
       <div class="pp-info">
         <div class="pp-name">${esc(fullName(p))}</div>
-        <div class="pp-meta"><span class="chip ${catChipClass(p.category)}">${esc(p.category || '—')}</span>${esc(p.org || '')}${p.topic ? ' · ' + esc(p.topic) : ''}</div>
+        <div class="pp-meta"><span class="chip ${catChipClass(p.category)}">${esc(p.category || '—')}</span>${rolesOf(p).length ? `<span class="chip">${esc(rolesOf(p).map(r => r.session).filter(Boolean).join(' · '))}</span>` : ''}${esc(p.org || '')}${p.topic ? ' · ' + esc(p.topic) : ''}</div>
       </div>
       <div class="pp-actions">
         <button class="btn sm gold" data-act="spot" title="Push this person to the display now">Spotlight</button>
@@ -1415,7 +1568,7 @@ function renderPeople() {
       if (act === 'spot') {
         /* fall back to the All queue when this person isn't in the selected one,
            so Prev/Next steps through a queue that actually contains them */
-        if (!peopleInCategory(ui.spotQueue || 'All').some(x => x.id === id)) ui.spotQueue = 'All';
+        if (!peopleInGroup(ui.spotQueue || 'All').some(x => x.id === id)) ui.spotQueue = 'All';
         ui.spotId = id; ui.sceneTab = 'spotlight';
         pushLive('spotlight', { personId: id, queue: ui.spotQueue || 'All' });
         renderSceneTabs(); renderSceneConfig();
@@ -1447,8 +1600,19 @@ function escClose(e) { if (e.key === 'Escape') closeModal(); }
 function closeModal() { $('#modalVeil')?.remove(); window.removeEventListener('keydown', escClose); }
 
 function openPersonModal(person) {
-  const p = person || { id: null, honorific: '', name: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null };
+  const p = person || { id: null, honorific: '', name: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null, roles: [] };
   let draftPhoto = p.photo;
+  const sessionOpts = [...new Set([...SESSION_ORDER, ...allSessions()])];
+  const roleRow = (r = {}) => `
+    <div class="frow role-row">
+      <div class="fld" style="width:150px"><label>Session</label><input class="r-session" list="sessList" value="${esc(r.session || '')}" placeholder="Session 1"></div>
+      <div class="fld" style="width:150px"><label>Role</label><select class="r-role">
+        ${['Speaker', 'Moderator', 'Panel Moderator'].map(x => `<option ${x === (r.role || 'Speaker') ? 'selected' : ''}>${x}</option>`).join('')}
+      </select></div>
+      <div class="fld grow"><label>Topic / duty (optional)</label><input class="r-topic" value="${esc(r.topic || '')}"></div>
+      <div class="fld" style="width:105px"><label>Slot</label><input class="r-slot" value="${esc(r.slot || '')}" placeholder="Tue 11:00"></div>
+      <button class="icobtn warn r-del" type="button" title="Remove this role">✕</button>
+    </div>`;
   const veil = openModal(`
     <div class="m-h"><h2>${person ? 'Edit person' : 'Add person'}</h2><button class="btn sm x" id="mClose">✕</button></div>
     <div class="m-b">
@@ -1478,7 +1642,11 @@ function openPersonModal(person) {
           </select>
           <input id="fCatOther" placeholder="New category name" style="display:none"></div>
       </div>
-      <div class="frow"><div class="fld grow"><label>Bio (a paragraph)</label><textarea id="fBio" rows="5" placeholder="A short professional biography…">${esc(p.bio)}</textarea></div></div>
+      <div class="settings-sec">Programme roles — powers the Session &amp; Moderators views (one row per engagement)</div>
+      <div id="rolesRows">${rolesOf(p).map(roleRow).join('')}</div>
+      <button class="btn sm" id="btnAddRole" type="button">＋ Add role</button>
+      <datalist id="sessList">${sessionOpts.map(s => `<option value="${esc(s)}">`).join('')}</datalist>
+      <div class="frow" style="margin-top:16px"><div class="fld grow"><label>Bio (a paragraph)</label><textarea id="fBio" rows="5" placeholder="A short professional biography…">${esc(p.bio)}</textarea></div></div>
     </div>
     <div class="m-f">
       <button class="btn" id="mCancel">Cancel</button>
@@ -1486,6 +1654,10 @@ function openPersonModal(person) {
     </div>`);
 
   $('#mClose', veil).onclick = $('#mCancel', veil).onclick = closeModal;
+  const rowsHost = $('#rolesRows', veil);
+  const wireRoleRows = () => $$('.r-del', rowsHost).forEach(b => b.onclick = () => b.closest('.role-row').remove());
+  wireRoleRows();
+  $('#btnAddRole', veil).onclick = () => { rowsHost.insertAdjacentHTML('beforeend', roleRow()); wireRoleRows(); };
   $('#fCatSel', veil).onchange = (e) => {
     const other = e.target.value === '__other';
     $('#fCatOther', veil).style.display = other ? '' : 'none';
@@ -1517,6 +1689,12 @@ function openPersonModal(person) {
       category: catSel === '__other' ? ($('#fCatOther', veil).value.trim() || 'Speaker') : catSel,
       bio: $('#fBio', veil).value.trim(),
       photo: draftPhoto,
+      roles: $$('.role-row', rowsHost).map(row => ({
+        session: $('.r-session', row).value.trim(),
+        role: $('.r-role', row).value,
+        topic: $('.r-topic', row).value.trim(),
+        slot: $('.r-slot', row).value.trim(),
+      })).filter(r => r.session || r.topic),
     };
     if (person) Object.assign(person, data);
     else state.people.push({ id: uid(), ...data });
@@ -1580,7 +1758,7 @@ function openSettingsModal() {
 
       <div class="settings-sec">Data</div>
       <div class="push-row">
-        <button class="btn" id="sSample">Load sample line-up</button>
+        <button class="btn" id="sSample">Load official programme line-up</button>
         <button class="btn danger" id="sWipe">Clear ALL data…</button>
       </div>
     </div>
@@ -1615,8 +1793,10 @@ function openSettingsModal() {
   };
   wireSlot('conf'); wireSlot('rpa');
   $('#sSample', veil).onclick = () => {
-    state.people = state.people.concat(SAMPLE_PEOPLE.map(p => ({ id: uid(), photo: null, ...p })));
-    persist(); closeModal(); renderAll(); toast('Sample line-up added');
+    if (state.people.length &&
+        !confirm(`Replace the current ${state.people.length} people with the official programme line-up (${PROGRAMME_PEOPLE.length} people)?\nPhotos and bios you have added will be lost — export a JSON backup first if unsure.`)) return;
+    state.people = PROGRAMME_PEOPLE.map(clonePerson);
+    persist(); closeModal(); renderAll(); toast(`Official programme line-up loaded — ${state.people.length} people`);
   };
   $('#sWipe', veil).onclick = () => {
     if (confirm('Really clear ALL people, settings and logos? Export a JSON backup first if unsure.')) {
@@ -1683,6 +1863,10 @@ function importJSON(e) {
             topic: str(p.topic), session: str(p.session), slot: str(p.slot),
             category: str(p.category) || 'Speaker', bio: str(p.bio),
             photo: dataUrl(p.photo),
+            roles: (Array.isArray(p.roles) ? p.roles : [])
+              .filter(r => r && typeof r === 'object' && !Array.isArray(r))
+              .map(r => ({ session: str(r.session), role: str(r.role) || 'Speaker', topic: str(r.topic), slot: str(r.slot) }))
+              .filter(r => r.session || r.topic),
           };
         });
       if (d.settings && typeof d.settings === 'object') state.settings = Object.assign(defaultState(false).settings, d.settings);
