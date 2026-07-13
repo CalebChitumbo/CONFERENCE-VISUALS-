@@ -1509,6 +1509,15 @@ function renderSceneConfig() {
   }
 }
 
+function loadProgrammeLineup() {
+  if (state.people.length &&
+      !confirm(`Replace the current ${state.people.length} people with the official programme line-up (${PROGRAMME_PEOPLE.length} people)?\nPhotos and bios you have added will be lost — export a JSON backup first if unsure.`)) return false;
+  state.people = PROGRAMME_PEOPLE.map(clonePerson);
+  persist(); renderAll();
+  toast(`Official programme line-up loaded — ${state.people.length} people`);
+  return true;
+}
+
 function stepSpotlight(dir) {
   const queueCat = (state.live.scene === 'spotlight' && state.live.params.queue) || ui.spotQueue || 'All';
   const queue = peopleInGroup(queueCat);
@@ -1540,7 +1549,12 @@ function renderPeople() {
   filt.innerHTML = groupOptions(keep);
 
   if (!rows.length) {
-    list.innerHTML = `<div class="pp-empty">${state.people.length ? 'No one matches your search.' : 'No people yet.<br>Click <b>＋ Add person</b> to enter your first speaker,<br>or load the official programme line-up from Settings.'}</div>`;
+    list.innerHTML = `<div class="pp-empty">${state.people.length ? 'No one matches your search.' :
+      `No people yet.<br><br>
+       <button class="btn gold big" id="ppLoadProg">📋&ensp;Load the official programme line-up</button>
+       <div style="margin-top:12px">…all speakers &amp; moderators from the conference programme, in one click —<br>or click <b>＋ Add person</b> to enter people yourself.</div>`}</div>`;
+    const lp = $('#ppLoadProg', list);
+    if (lp) lp.onclick = loadProgrammeLineup;
     return;
   }
   list.innerHTML = rows.map(({ p, idx }) => `
@@ -1792,12 +1806,7 @@ function openSettingsModal() {
     };
   };
   wireSlot('conf'); wireSlot('rpa');
-  $('#sSample', veil).onclick = () => {
-    if (state.people.length &&
-        !confirm(`Replace the current ${state.people.length} people with the official programme line-up (${PROGRAMME_PEOPLE.length} people)?\nPhotos and bios you have added will be lost — export a JSON backup first if unsure.`)) return;
-    state.people = PROGRAMME_PEOPLE.map(clonePerson);
-    persist(); closeModal(); renderAll(); toast(`Official programme line-up loaded — ${state.people.length} people`);
-  };
+  $('#sSample', veil).onclick = () => { if (loadProgrammeLineup()) closeModal(); };
   $('#sWipe', veil).onclick = () => {
     if (confirm('Really clear ALL people, settings and logos? Export a JSON backup first if unsure.')) {
       state = defaultState(false); persist(); closeModal(); renderAll(); toast('All data cleared');
