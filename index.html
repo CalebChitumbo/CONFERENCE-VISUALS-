@@ -592,22 +592,24 @@ const HONORIFICS = ['Prof', 'Dr', 'Mr', 'Mrs', 'Ms', 'Madam', 'Eng', 'Hon', 'Col
 const PROGRAMME_PEOPLE = [
   { honorific:'Ms', name:'Hannah Kanini', org:'', category:'Moderator',
     topic:'Moderator — Official Opening Ceremony', session:'Official Opening', slot:'Tue 09:00', bio:'',
-    roles:[{ session:'Official Opening', role:'Moderator', topic:'Official Opening Ceremony', slot:'Tue 09:00' }] },
+    roles:[{ session:'Official Opening', part:'Morning', role:'Moderator', topic:'Official Opening Ceremony', slot:'Tue 09:00' }] },
   { honorific:'Mr', name:'Miyombo E. Miyombo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
     topic:'Beyond Compliance: Using Regulatory Frameworks as a Foundation for Radiation Safety Excellence', session:'Session 4', slot:'Fri 09:15', bio:'',
     roles:[
-      { session:'Session 1', role:'Moderator', topic:'', slot:'Tue 11:00' },
-      { session:'Session 4', role:'Speaker', topic:'Beyond Compliance: Using Regulatory Frameworks as a Foundation for Radiation Safety Excellence', slot:'Fri 09:15' },
+      { session:'Session 1', part:'Mid-morning', role:'Moderator', topic:'', slot:'Tue 11:00' },
+      { session:'Session 1', part:'Afternoon', role:'Moderator', topic:'', slot:'Tue 14:00' },
+      { session:'Session 4', part:'Morning', role:'Speaker', topic:'Beyond Compliance: Using Regulatory Frameworks as a Foundation for Radiation Safety Excellence', slot:'Fri 09:15' },
     ] },
   { honorific:'Ms', name:'Melody M. Nsofwa', org:'Radiation Protection Authority', category:'RPA/RPO Official',
     topic:'Overview on Radiation Safety Culture', session:'Session 1', slot:'Tue 11:00', bio:'',
-    roles:[{ session:'Session 1', role:'Speaker', topic:'Overview on Radiation Safety Culture', slot:'Tue 11:00' }] },
+    roles:[{ session:'Session 1', part:'Mid-morning', role:'Speaker', topic:'Overview on Radiation Safety Culture', slot:'Tue 11:00' }] },
   { honorific:'Ms', name:'Luuma Michelo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
     topic:'Management Systems and Structures Required for an Effective Radiation Safety Culture', session:'Session 1', slot:'Tue 11:20', bio:'',
     roles:[
-      { session:'Session 1', role:'Speaker', topic:'Management Systems and Structures Required for an Effective Radiation Safety Culture', slot:'Tue 11:20' },
-      { session:'Session 2', role:'Panel Moderator', topic:'Panel: Building a Radiation Safety Culture — From Student Education to Clinical Practice in Zambia', slot:'Wed 11:40' },
-      { session:'Session 3', role:'Moderator', topic:'', slot:'Thu 09:00' },
+      { session:'Session 1', part:'Mid-morning', role:'Speaker', topic:'Management Systems and Structures Required for an Effective Radiation Safety Culture', slot:'Tue 11:20' },
+      { session:'Session 2', part:'Mid-morning', role:'Panel Moderator', topic:'Panel: Building a Radiation Safety Culture — From Student Education to Clinical Practice in Zambia', slot:'Wed 11:40' },
+      { session:'Session 3', part:'Morning', role:'Moderator', topic:'', slot:'Thu 09:00' },
+      { session:'Session 3', part:'Mid-morning', role:'Moderator', topic:'', slot:'Thu 11:00' },
     ] },
   { honorific:'Mr', name:'Caleb Chitumbo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
     topic:'IAEA RAIS + e-Licensing System — Challenges and Experiences', session:'Side Event', slot:'Tue 12:15', bio:'',
@@ -618,50 +620,51 @@ const PROGRAMME_PEOPLE = [
   { honorific:'Ms', name:'Nangoma Hampuwo', org:'Radiation Protection Authority', category:'RPA/RPO Official',
     topic:'Promotion of Radiation Safety Culture', session:'Session 1', slot:'Tue 14:00', bio:'',
     roles:[
-      { session:'Session 1', role:'Speaker', topic:'Promotion of Radiation Safety Culture', slot:'Tue 14:00' },
-      { session:'Session 2', role:'Moderator', topic:'', slot:'Wed 09:00' },
-      { session:'Session 2', role:'Panel Moderator', topic:'Panel: CT Dose Optimisation in Zambia', slot:'Wed 09:50' },
-      { session:'Session 4', role:'Speaker', topic:'2025 Compliance of Medical Facilities', slot:'Fri 09:40' },
+      { session:'Session 1', part:'Afternoon', role:'Speaker', topic:'Promotion of Radiation Safety Culture', slot:'Tue 14:00' },
+      { session:'Session 2', part:'Morning', role:'Moderator', topic:'', slot:'Wed 09:00' },
+      { session:'Session 2', part:'Morning', role:'Panel Moderator', topic:'Panel: CT Dose Optimisation in Zambia', slot:'Wed 09:50' },
+      { session:'Session 2', part:'Mid-morning', role:'Moderator', topic:'', slot:'Wed 11:00' },
+      { session:'Session 4', part:'Morning', role:'Speaker', topic:'2025 Compliance of Medical Facilities', slot:'Fri 09:40' },
     ] },
   { honorific:'Mr', name:'Martin C. Kabanda', org:'Radiation Protection Authority', category:'RPA/RPO Official',
     topic:'Leadership and Personnel Behaviour for an Effective Radiation Safety Culture', session:'Session 1', slot:'Tue 14:20', bio:'',
     roles:[
-      { session:'Session 1', role:'Speaker', topic:'Leadership and Personnel Behaviour for an Effective Radiation Safety Culture', slot:'Tue 14:20' },
-      { session:'Session 3', role:'Panel Moderator', topic:'Panel: The RPO as Safety Champion — Integrating Technical Expertise with Human and Behavioural Science', slot:'Thu 12:00' },
-      { session:'Session 4', role:'Moderator', topic:'', slot:'Fri 09:00' },
+      { session:'Session 1', part:'Afternoon', role:'Speaker', topic:'Leadership and Personnel Behaviour for an Effective Radiation Safety Culture', slot:'Tue 14:20' },
+      { session:'Session 3', part:'Mid-morning', role:'Panel Moderator', topic:'Panel: The RPO as Safety Champion — Integrating Technical Expertise with Human and Behavioural Science', slot:'Thu 12:00' },
+      { session:'Session 4', part:'Morning', role:'Moderator', topic:'', slot:'Fri 09:00' },
     ] },
   { honorific:'Dr', name:'Stephen Kafwimbi', org:'University of Zambia — School of Health Sciences', category:'Speaker',
     topic:'From Compliance to Culture: Navigating Systematic Barriers to CT Dose Optimisation and Image Quality Assessment in Zambia', session:'Session 2', slot:'Wed 09:10', bio:'',
-    roles:[{ session:'Session 2', role:'Speaker', topic:'From Compliance to Culture: Navigating Systematic Barriers to CT Dose Optimisation and Image Quality Assessment in Zambia', slot:'Wed 09:10' }] },
+    roles:[{ session:'Session 2', part:'Morning', role:'Speaker', topic:'From Compliance to Culture: Navigating Systematic Barriers to CT Dose Optimisation and Image Quality Assessment in Zambia', slot:'Wed 09:10' }] },
   { honorific:'Mr', name:'Mumba Chilimboyi', org:'National Heart Hospital', category:'Speaker',
     topic:'Radiation Protection in Paediatric Computed Tomography Examinations', session:'Session 2', slot:'Wed 09:30', bio:'',
-    roles:[{ session:'Session 2', role:'Speaker', topic:'Radiation Protection in Paediatric Computed Tomography Examinations', slot:'Wed 09:30' }] },
+    roles:[{ session:'Session 2', part:'Morning', role:'Speaker', topic:'Radiation Protection in Paediatric Computed Tomography Examinations', slot:'Wed 09:30' }] },
   { honorific:'Ms', name:'Hellen Namwaba', org:'Occupational Health and Safety Institute, Solwezi', category:'Speaker',
     topic:'Building and Sustaining a Radiation Safety Culture in Clinical Environments', session:'Session 2', slot:'Wed 11:00', bio:'',
-    roles:[{ session:'Session 2', role:'Speaker', topic:'Building and Sustaining a Radiation Safety Culture in Clinical Environments', slot:'Wed 11:00' }] },
+    roles:[{ session:'Session 2', part:'Mid-morning', role:'Speaker', topic:'Building and Sustaining a Radiation Safety Culture in Clinical Environments', slot:'Wed 11:00' }] },
   { honorific:'Ms', name:'Eves Bbabbi', org:'St. Luke Mission Hospital', category:'Speaker',
     topic:'Radiation Protection Knowledge and Awareness among Clinical Officer Students, LMMU', session:'Session 2', slot:'Wed 11:20', bio:'',
-    roles:[{ session:'Session 2', role:'Speaker', topic:'Radiation Protection Knowledge and Awareness among Clinical Officer Students, LMMU', slot:'Wed 11:20' }] },
+    roles:[{ session:'Session 2', part:'Mid-morning', role:'Speaker', topic:'Radiation Protection Knowledge and Awareness among Clinical Officer Students, LMMU', slot:'Wed 11:20' }] },
   { honorific:'Mr', name:'Muleya Moshious', org:'Victoria Hospital, Lusaka', category:'Speaker',
     topic:'The Evolving Role of the Radiation Protection Officer in Modern Healthcare', session:'Session 3', slot:'Thu 09:15', bio:'',
-    roles:[{ session:'Session 3', role:'Speaker', topic:'The Evolving Role of the Radiation Protection Officer in Modern Healthcare', slot:'Thu 09:15' }] },
+    roles:[{ session:'Session 3', part:'Morning', role:'Speaker', topic:'The Evolving Role of the Radiation Protection Officer in Modern Healthcare', slot:'Thu 09:15' }] },
   { honorific:'Prof', name:'Manyika Kabuswa Davy', org:'University of Lusaka', category:'Speaker',
     topic:'Human and Behavioural Dimensions in Radiation Safety', session:'Session 3', slot:'Thu 09:45', bio:'',
-    roles:[{ session:'Session 3', role:'Speaker', topic:'Human and Behavioural Dimensions in Radiation Safety', slot:'Thu 09:45' }] },
+    roles:[{ session:'Session 3', part:'Morning', role:'Speaker', topic:'Human and Behavioural Dimensions in Radiation Safety', slot:'Thu 09:45' }] },
   { honorific:'Mr', name:'Sibeso Kabeleko', org:'Lewanika General Hospital', category:'Moderator',
     topic:'Panel Moderator — The RPO as Safety Champion', session:'Session 3', slot:'Thu 10:10', bio:'',
-    roles:[{ session:'Session 3', role:'Panel Moderator', topic:'Panel: The RPO as Safety Champion — Integrating Technical Expertise with Human and Behavioural Science', slot:'Thu 10:10' }] },
+    roles:[{ session:'Session 3', part:'Morning', role:'Panel Moderator', topic:'Panel: The RPO as Safety Champion — Integrating Technical Expertise with Human and Behavioural Science', slot:'Thu 10:10' }] },
   { honorific:'Dr', name:'Juilet Mulopwe', org:'University Teaching Hospital', category:'Speaker',
     topic:'Embedding Radiation Safety Culture into Everyday Clinical Practice: Practical Lessons from a Tertiary Referral Hospital', session:'Session 3', slot:'Thu 11:00', bio:'',
-    roles:[{ session:'Session 3', role:'Speaker', topic:'Embedding Radiation Safety Culture into Everyday Clinical Practice: Practical Lessons from a Tertiary Referral Hospital', slot:'Thu 11:00' }] },
+    roles:[{ session:'Session 3', part:'Mid-morning', role:'Speaker', topic:'Embedding Radiation Safety Culture into Everyday Clinical Practice: Practical Lessons from a Tertiary Referral Hospital', slot:'Thu 11:00' }] },
   { honorific:'Col Dr', name:'Ruth W. Phiri', org:'Maina Soko Medical Centre', category:'Speaker',
     topic:'Myths in Radiation Safety Culture — Changing Beliefs: Changing Behaviour and Protecting Lives', session:'Session 3', slot:'Thu 11:30', bio:'',
-    roles:[{ session:'Session 3', role:'Speaker', topic:'Myths in Radiation Safety Culture — Changing Beliefs: Changing Behaviour and Protecting Lives', slot:'Thu 11:30' }] },
+    roles:[{ session:'Session 3', part:'Mid-morning', role:'Speaker', topic:'Myths in Radiation Safety Culture — Changing Beliefs: Changing Behaviour and Protecting Lives', slot:'Thu 11:30' }] },
   { honorific:'Mr', name:'James Simoko', org:'Radiation Protection Authority', category:'RPA/RPO Official',
     topic:'Quality Assurance and Quality Control in Diagnostic Radiography: The Role of Human and Behavioural Factors', session:'Session 3', slot:'Thu 14:20', bio:'',
     roles:[
-      { session:'Session 3', role:'Speaker', topic:'Quality Assurance and Quality Control in Diagnostic Radiography: The Role of Human and Behavioural Factors', slot:'Thu 14:20' },
-      { session:'Session 3', role:'Moderator', topic:'Group Presentations — Experience Sharing in QC in Diagnostic Radiography', slot:'Thu 15:30' },
+      { session:'Session 3', part:'Afternoon', role:'Speaker', topic:'Quality Assurance and Quality Control in Diagnostic Radiography: The Role of Human and Behavioural Factors', slot:'Thu 14:20' },
+      { session:'Session 3', part:'Afternoon', role:'Moderator', topic:'Group Presentations — Experience Sharing in QC in Diagnostic Radiography', slot:'Thu 15:30' },
     ] },
 ];
 const clonePerson = p => ({ id: uid(), photo: null, ...p, roles: (p.roles || []).map(r => ({ ...r })) });
@@ -756,19 +759,50 @@ function slotKey(slot) {
   if (!m) return 9e9;
   return (m[1] ? DAY_IDX[m[1].slice(0, 3).toLowerCase()] : 8) * 1e4 + (+m[2]) * 100 + (+m[3]);
 }
+/* Sessions can be split into parts (Morning / Mid-morning / Afternoon —
+   the blocks between tea breaks). A part group key is "Session · Part". */
+const PART_SEP = ' · ';
+function parseGroupKey(key) {
+  const i = (key || '').indexOf(PART_SEP);
+  if (i < 0) return null;
+  const session = key.slice(0, i), part = key.slice(i + PART_SEP.length);
+  return allSessions().includes(session) ? { session, part } : null;
+}
+function rolesForKey(p, key) {
+  const pk = parseGroupKey(key);
+  if (pk) return rolesOf(p).filter(r => r.session === pk.session && (r.part || '').trim() === pk.part);
+  return rolesOf(p).filter(r => r.session === key);
+}
+function sessionParts(session) {
+  const firstSlot = {};
+  state.people.forEach(p => rolesOf(p).forEach(r => {
+    const part = (r.part || '').trim();
+    if (r.session !== session || !part) return;
+    firstSlot[part] = Math.min(firstSlot[part] ?? 9e9, slotKey(r.slot));
+  }));
+  return Object.keys(firstSlot).sort((a, b) => firstSlot[a] - firstSlot[b]);
+}
+function sessionPartKeys() {
+  const keys = [];
+  allSessions().forEach(s => {
+    const parts = sessionParts(s);
+    if (parts.length >= 2) parts.forEach(part => keys.push(s + PART_SEP + part));
+  });
+  return keys;
+}
 function peopleInGroup(key) {
   if (!key || key === GROUP_ALL) return state.people.slice();
   if (key === GROUP_SPEAKERS) return state.people.filter(p => speakerRoles(p).length || (!rolesOf(p).length && p.topic));
   if (key === GROUP_RPA) return state.people.filter(isRPA);
   if (key === GROUP_MODS) return state.people.filter(p => moderatorRoles(p).length);
-  if (allSessions().includes(key)) {
-    const first = p => Math.min(...rolesOf(p).filter(r => r.session === key).map(r => slotKey(r.slot)));
-    return state.people.filter(p => rolesOf(p).some(r => r.session === key)).sort((a, b) => first(a) - first(b));
+  if (parseGroupKey(key) || allSessions().includes(key)) {
+    const first = p => Math.min(...rolesForKey(p, key).map(r => slotKey(r.slot)));
+    return state.people.filter(p => rolesForKey(p, key).length).sort((a, b) => first(a) - first(b));
   }
   return state.people.filter(p => p.category === key);
 }
 function validGroupKeys() {
-  return [GROUP_ALL, GROUP_SPEAKERS, GROUP_RPA, GROUP_MODS, ...allSessions(), ...allCategories()];
+  return [GROUP_ALL, GROUP_SPEAKERS, GROUP_RPA, GROUP_MODS, ...allSessions(), ...sessionPartKeys(), ...allCategories()];
 }
 function personById(id) { return state.people.find(p => p.id === id) || null; }
 function fullName(p) { return [p.honorific, p.name].filter(Boolean).join(' '); }
@@ -804,7 +838,10 @@ function gridTitleFor(key) {
     'Side Event': 'Conference Side Event — RAIS & e-Licensing',
     'Keynote': 'Keynote Speakers', 'Speaker': 'Speakers', 'Moderator': 'Moderators',
     'Panellist': 'Panellists', 'RPA/RPO Official': 'RPA & RPO Officials', 'Organising Committee': 'Organising Committee' };
-  return map[key] || key;
+  if (map[key]) return map[key];
+  const pk = parseGroupKey(key);
+  if (pk) return `${pk.session} — ${pk.part}`;
+  return key;
 }
 function catChipClass(cat) {
   const map = { 'Keynote':'c-keynote','Speaker':'c-speaker','Moderator':'c-moderator','Panellist':'c-panellist','RPA/RPO Official':'c-official','Organising Committee':'c-committee' };
@@ -877,13 +914,14 @@ function gridLineFor(p, key) {
     const sess = [...new Set(moderatorRoles(p).map(r => (r.session || '').trim()).filter(Boolean))];
     return sess.length ? 'Moderates: ' + sess.join(' · ') : (p.topic || '');
   }
-  const rs = rolesOf(p).filter(r => r.session === key);
+  const rs = rolesForKey(p, key);
   if (rs.length) {
-    return rs.map(r => {
+    const lines = rs.map(r => {
       if (isModRole(r)) return r.topic || (r.role === 'Panel Moderator' ? 'Panel Moderator' : 'Moderator');
       const time = (r.slot || '').replace(/^[A-Za-z]+\s+/, '');
       return (time ? time + ' · ' : '') + (r.topic || p.topic || '');
-    }).join(' · ');
+    });
+    return [...new Set(lines)].join(' · ');
   }
   return p.topic || '';
 }
@@ -923,11 +961,11 @@ function sceneSpotlight(params) {
   if (!p) return `<div class="sc-title"><div class="tagline" style="font-size:34px">Add a person in the control panel to use the spotlight.</div></div>`;
   const bioLen = (p.bio || '').length;
   const bioCls = bioLen > 950 ? 'vlong' : bioLen > 620 ? 'long' : '';
-  /* when spotlighting from a session queue, show THAT session's engagement
-     (a speaker's talk in that session, or their moderator duty) */
-  const rs = params.queue ? rolesOf(p).filter(r => r.session === params.queue) : [];
+  /* when spotlighting from a session (or session-part) queue, show THAT
+     engagement — a speaker's talk there, or their moderator duty */
+  const rs = params.queue ? rolesForKey(p, params.queue) : [];
   const role = rs.find(r => !isModRole(r)) || rs[0] || null;
-  const topic = role ? (role.topic || (isModRole(role) ? `${role.role || 'Moderator'} — ${role.session}` : p.topic)) : p.topic;
+  const topic = role ? (role.topic || (isModRole(role) ? `${role.role || 'Moderator'} — ${role.session}${(role.part || '').trim() ? ` (${role.part.trim()})` : ''}` : p.topic)) : p.topic;
   const chip = (role ? [role.session, role.slot] : [p.session, p.slot]).filter(x => x && x !== '—').join(' · ');
   const cat = role && isModRole(role) && !speakerRoles(p).length ? 'Moderator' : (p.category || 'Speaker');
   return `<div class="sc-spot">
@@ -1396,11 +1434,18 @@ function renderSceneTabs() {
 }
 
 function groupOptions(selected) {
-  const opt = v => `<option value="${esc(v)}" ${v === selected ? 'selected' : ''}>${esc(v)}</option>`;
+  const opt = (v, label) => `<option value="${esc(v)}" ${v === selected ? 'selected' : ''}>${esc(label || v)}</option>`;
   const sessions = allSessions();
-  return `<optgroup label="Everyone">${[GROUP_ALL, GROUP_SPEAKERS, GROUP_RPA, GROUP_MODS].map(opt).join('')}</optgroup>` +
-    (sessions.length ? `<optgroup label="Sessions">${sessions.map(opt).join('')}</optgroup>` : '') +
-    `<optgroup label="Categories">${allCategories().map(opt).join('')}</optgroup>`;
+  /* each session is followed by its parts (whole session first, then the
+     morning / mid-morning / afternoon blocks between the breaks) */
+  const sessionOpts = sessions.map(s => {
+    const parts = sessionParts(s);
+    return opt(s, parts.length >= 2 ? s + ' (whole)' : s) +
+      (parts.length >= 2 ? parts.map(part => opt(s + PART_SEP + part, ' ↳ ' + part)).join('') : '');
+  }).join('');
+  return `<optgroup label="Everyone">${[GROUP_ALL, GROUP_SPEAKERS, GROUP_RPA, GROUP_MODS].map(v => opt(v)).join('')}</optgroup>` +
+    (sessions.length ? `<optgroup label="Sessions">${sessionOpts}</optgroup>` : '') +
+    `<optgroup label="Categories">${allCategories().map(v => opt(v)).join('')}</optgroup>`;
 }
 
 function renderSceneConfig() {
@@ -1541,7 +1586,7 @@ function renderPeople() {
     .map((p, idx) => ({ p, idx }))
     .filter(({ p }) => inGroup.has(p.id))
     .filter(({ p }) => !q || [p.name, p.org, p.topic, p.category, p.session,
-      ...rolesOf(p).flatMap(r => [r.session, r.role, r.topic])].join(' ').toLowerCase().includes(q));
+      ...rolesOf(p).flatMap(r => [r.session, r.part, r.role, r.topic])].join(' ').toLowerCase().includes(q));
 
   $('#ppCount').textContent = `${state.people.length} total`;
   const filt = $('#ppCatFilter');
@@ -1619,12 +1664,13 @@ function openPersonModal(person) {
   const sessionOpts = [...new Set([...SESSION_ORDER, ...allSessions()])];
   const roleRow = (r = {}) => `
     <div class="frow role-row">
-      <div class="fld" style="width:150px"><label>Session</label><input class="r-session" list="sessList" value="${esc(r.session || '')}" placeholder="Session 1"></div>
-      <div class="fld" style="width:150px"><label>Role</label><select class="r-role">
+      <div class="fld" style="width:135px"><label>Session</label><input class="r-session" list="sessList" value="${esc(r.session || '')}" placeholder="Session 1"></div>
+      <div class="fld" style="width:125px"><label>Part (optional)</label><input class="r-part" list="partList" value="${esc(r.part || '')}" placeholder="Morning"></div>
+      <div class="fld" style="width:140px"><label>Role</label><select class="r-role">
         ${['Speaker', 'Moderator', 'Panel Moderator'].map(x => `<option ${x === (r.role || 'Speaker') ? 'selected' : ''}>${x}</option>`).join('')}
       </select></div>
       <div class="fld grow"><label>Topic / duty (optional)</label><input class="r-topic" value="${esc(r.topic || '')}"></div>
-      <div class="fld" style="width:105px"><label>Slot</label><input class="r-slot" value="${esc(r.slot || '')}" placeholder="Tue 11:00"></div>
+      <div class="fld" style="width:100px"><label>Slot</label><input class="r-slot" value="${esc(r.slot || '')}" placeholder="Tue 11:00"></div>
       <button class="icobtn warn r-del" type="button" title="Remove this role">✕</button>
     </div>`;
   const veil = openModal(`
@@ -1660,6 +1706,7 @@ function openPersonModal(person) {
       <div id="rolesRows">${rolesOf(p).map(roleRow).join('')}</div>
       <button class="btn sm" id="btnAddRole" type="button">＋ Add role</button>
       <datalist id="sessList">${sessionOpts.map(s => `<option value="${esc(s)}">`).join('')}</datalist>
+      <datalist id="partList"><option value="Morning"><option value="Mid-morning"><option value="Afternoon"></datalist>
       <div class="frow" style="margin-top:16px"><div class="fld grow"><label>Bio (a paragraph)</label><textarea id="fBio" rows="5" placeholder="A short professional biography…">${esc(p.bio)}</textarea></div></div>
     </div>
     <div class="m-f">
@@ -1705,6 +1752,7 @@ function openPersonModal(person) {
       photo: draftPhoto,
       roles: $$('.role-row', rowsHost).map(row => ({
         session: $('.r-session', row).value.trim(),
+        part: $('.r-part', row).value.trim(),
         role: $('.r-role', row).value,
         topic: $('.r-topic', row).value.trim(),
         slot: $('.r-slot', row).value.trim(),
@@ -1874,7 +1922,7 @@ function importJSON(e) {
             photo: dataUrl(p.photo),
             roles: (Array.isArray(p.roles) ? p.roles : [])
               .filter(r => r && typeof r === 'object' && !Array.isArray(r))
-              .map(r => ({ session: str(r.session), role: str(r.role) || 'Speaker', topic: str(r.topic), slot: str(r.slot) }))
+              .map(r => ({ session: str(r.session), part: str(r.part), role: str(r.role) || 'Speaker', topic: str(r.topic), slot: str(r.slot) }))
               .filter(r => r.session || r.topic),
           };
         });

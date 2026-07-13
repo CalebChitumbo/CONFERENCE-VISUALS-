@@ -34,7 +34,7 @@ The display can also be opened manually: `index.html#display`.
 | Scene | What it shows | Live controls |
 |---|---|---|
 | **① Title / Welcome** | Event name, theme, dates, venue, conference + RPA logos | wording editable in Settings |
-| **② Panel Grid** | A group as circular gold-ring photos with name, affiliation and topic — IAEA-panel style. Groups: **All · All Speakers · RPA / Internal · Moderators · any Session (1–4, Official Opening, Side Event) · any category**. Session views list that session's speakers *and* moderators in programme order, each labelled with their role | group picker + custom heading |
+| **② Panel Grid** | A group as circular gold-ring photos with name, affiliation and topic — IAEA-panel style. Groups: **All · All Speakers · RPA / Internal · Moderators · any Session (1–4, Official Opening, Side Event) · any session part (Morning / Mid-morning / Afternoon — the blocks between tea breaks) · any category**. Session views list that session's speakers *and* moderators in programme order, each labelled with their role | group picker + custom heading |
 | **③ Speaker Spotlight** | One person full-screen: large photo, name, title, topic, session chip and bio. Pick a session as the queue to step through its programme in time order — the topic shown follows that session's engagement | **◀ Prev / Next ▶** steps the queue (also ← / → keys); every person row has an instant **Spotlight** button |
 | **④ Countdown & Stats** | Live countdown to the next session + Day X of 4, session count, speaker count, theme | target time, session label, quick-set buttons (+5/+10/+15/+30 min, top of next hour) — quick-sets apply instantly while the countdown is live |
 
