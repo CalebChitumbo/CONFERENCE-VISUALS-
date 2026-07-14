@@ -61,6 +61,17 @@ Under **Presentations → ＋ Add presentation** upload either:
 
 Dropping a raw `.pptx` on the app shows these instructions.
 
+### Attach a deck to a speaker
+
+In the person editor (**People → ✎**) pick the speaker's deck under
+**Presentation** — or upload it right there with **⬆ Upload deck**. Then:
+
+- their row in People gets a **▤ Slides** button (pushes their deck live);
+- the Spotlight panel gets **🎞 Start presentation** — introduce the speaker,
+  one click and their slides are on screen;
+- the Slides panel gets **👤 Spotlight ‹name›** — one click back to their
+  spotlight when the talk ends.
+
 Notes:
 
 - Slides are stored in the browser's **IndexedDB** (they are too large for the

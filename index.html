@@ -675,6 +675,7 @@ function peopleInCategory(cat) {
   return (!cat || cat === 'All') ? state.people.slice() : state.people.filter(p => p.category === cat);
 }
 function personById(id) { return state.people.find(p => p.id === id) || null; }
+function personDeck(p) { return (p && p.deckId && (state.decks || []).find(d => d.id === p.deckId)) || null; }
 function fullName(p) { return [p.honorific, p.name].filter(Boolean).join(' '); }
 function initialsOf(p) {
   return (p.name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
@@ -854,22 +855,29 @@ function loadPdfJs() {
   return pdfjsP;
 }
 
-/* ── Upload pipeline (control panel) ─────────────────────────── */
-async function handleDeckFiles(files) {
-  if (!files.length) return;
+/* ── Upload pipeline (control panel) ──────────────────────────
+   Returns the new deck's id (or null). opts.background = don't
+   steal the Slides tab (used when attaching a deck to a person). */
+async function handleDeckFiles(files, opts = {}) {
+  if (!files.length) return null;
   const ext = f => (f.name.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
   const pptx = files.find(f => ['ppt', 'pptx'].includes(ext(f)));
   const pdf  = files.find(f => f.type === 'application/pdf' || ext(f) === 'pdf');
   const json = files.find(f => ext(f) === 'json');
   const imgs = files.filter(f => /^image\//.test(f.type));
-  if (pptx)      openPptxHelp(pptx.name);
-  else if (pdf)  await deckFromPdf(pdf);
-  else if (json) await importDeckFile(json);
-  else if (imgs.length) await deckFromImages(imgs);
-  else toast('⚠ Upload a PDF export of the PowerPoint, the slides as PNG/JPG images, or a deck file (.rpo8deck.json)', 5000);
+  if (pptx) {
+    if (opts.background) toast('⚠ Export the PowerPoint as a PDF (File → Save As → PDF) or PNG images first, then upload that here', 6000);
+    else openPptxHelp(pptx.name);
+    return null;
+  }
+  if (pdf)  return deckFromPdf(pdf, opts);
+  if (json) return importDeckFile(json, opts);
+  if (imgs.length) return deckFromImages(imgs, opts);
+  toast('⚠ Upload a PDF export of the PowerPoint, the slides as PNG/JPG images, or a deck file (.rpo8deck.json)', 5000);
+  return null;
 }
 
-async function deckFromImages(imgs) {
+async function deckFromImages(imgs, opts = {}) {
   /* natural sort so Slide2 comes before Slide10 */
   imgs.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   const prog = openProgress('Preparing slides');
@@ -884,11 +892,11 @@ async function deckFromImages(imgs) {
       ? imgs[0].name.replace(/\.[^.]+$/, '')
       : (imgs[0].name.replace(/\.[^.]+$/, '').replace(/\d+$/, '').replace(/[-_ .]+$/, '') || 'Slides');
     prog.done();
-    await saveDeck(name || 'Slides', slides, thumbs);
-  } catch (e) { prog.done(); toast('⚠ Could not read one of the images'); }
+    return await saveDeck(name || 'Slides', slides, thumbs, opts);
+  } catch (e) { prog.done(); toast('⚠ Could not read one of the images'); return null; }
 }
 
-async function deckFromPdf(file) {
+async function deckFromPdf(file, opts = {}) {
   const prog = openProgress('Converting the PDF to slides');
   try {
     prog.set('Loading the PDF engine (needs internet once)…', 0);
@@ -909,27 +917,32 @@ async function deckFromPdf(file) {
       thumbs.push(thumbFromCanvas(c));
     }
     prog.done();
-    await saveDeck(file.name.replace(/\.[^.]+$/, ''), slides, thumbs);
+    return await saveDeck(file.name.replace(/\.[^.]+$/, ''), slides, thumbs, opts);
   } catch (e) {
     prog.done();
     toast(e && e.message === 'offline'
       ? '⚠ Converting a PDF needs internet once (to fetch the PDF engine). Connect briefly and retry — or export the slides as PNG images from PowerPoint and upload those instead.'
       : '⚠ Could not read that PDF — try re-exporting it from PowerPoint', 6500);
+    return null;
   }
 }
 
-async function saveDeck(name, slides, thumbs) {
-  if (!slides.length) { toast('⚠ No slides found in that upload'); return; }
+async function saveDeck(name, slides, thumbs, opts = {}) {
+  if (!slides.length) { toast('⚠ No slides found in that upload'); return null; }
   const deck = { id: uid(), name: name || 'Presentation', n: slides.length, slides, thumbs, addedAt: Date.now() };
   deckCache[deck.id] = deck;
   const stored = await deckDB.put(deck).catch(() => false);
   state.decks.push({ id: deck.id, name: deck.name, n: deck.n, addedAt: deck.addedAt, pos: 0 });
   persist();
-  ui.sceneTab = 'slides'; ui.deckId = deck.id;
-  renderDecks(); renderSceneTabs(); renderSceneConfig();
+  renderDecks();
+  if (!opts.background) {
+    ui.sceneTab = 'slides'; ui.deckId = deck.id;
+    renderSceneTabs(); renderSceneConfig();
+  }
   toast(stored === false
     ? `“${deck.name}” is ready (${deck.n} slides) — ⚠ this browser can't store it permanently, so it lasts until the tab closes`
-    : `“${deck.name}” is ready — ${deck.n} slides. Press ▶ Display Slides to put it on screen.`, 4500);
+    : `“${deck.name}” is ready — ${deck.n} slides.`, 4000);
+  return deck.id;
 }
 
 async function exportDeck(id) {
@@ -944,14 +957,16 @@ async function exportDeck(id) {
   toast('Deck file downloaded — import it on the event machine with ＋ Add presentation');
 }
 
-async function importDeckFile(f) {
+async function importDeckFile(f, opts = {}) {
   try {
     const d = JSON.parse(await f.text());
     if (d && d.app === 'rpo8-deck' && Array.isArray(d.slides) && d.slides.length) {
       const thumbs = (Array.isArray(d.thumbs) && d.thumbs.length === d.slides.length) ? d.thumbs : d.slides;
-      await saveDeck(d.name || f.name.replace(/\..*$/, ''), d.slides, thumbs);
-    } else toast('⚠ That JSON is not a deck export (expected a .rpo8deck.json file)');
+      return await saveDeck(d.name || f.name.replace(/\..*$/, ''), d.slides, thumbs, opts);
+    }
+    toast('⚠ That JSON is not a deck export (expected a .rpo8deck.json file)');
   } catch (e) { toast('⚠ Could not read that file'); }
+  return null;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -1157,16 +1172,30 @@ function makeStage(host) {
       const contentChanged = key !== this.lastKey;
       this.lastKey = key;
       const slot = $('.scene-slot', stage);
-      const old = $('.scene', slot);
+      /* fade out EVERY scene currently on stage — rapid switches can stack
+         several before the previous fade finishes; missing one left it
+         stuck on screen underneath the new scene */
+      const olds = $$('.scene', slot);
+      const last = olds[olds.length - 1] || null;
       const sc = document.createElement('div');
       sc.className = 'scene' + ((animate && contentChanged) ? '' : ' no-anim');
       sc.innerHTML = buildSceneHTML(live);
       /* stepping within the same deck → quicker crossfade than a scene change */
-      const oh = old && old.querySelector('[data-slides]'), nh = sc.querySelector('[data-slides]');
-      if (oh && nh && oh.dataset.slides === nh.dataset.slides) { sc.classList.add('slide-step'); old.classList.add('slide-step'); }
+      const oh = last && last.querySelector('[data-slides]'), nh = sc.querySelector('[data-slides]');
+      const quick = !!(oh && nh && oh.dataset.slides === nh.dataset.slides);
+      if (quick) sc.classList.add('slide-step');
       slot.appendChild(sc);
       hydrateSlides(sc);
-      if (old) { old.classList.add('out'); setTimeout(() => old.remove(), 620); }
+      olds.forEach(o => {
+        if (!o.classList.contains('out')) {
+          if (quick) o.classList.add('slide-step');
+          o.classList.add('out');
+        }
+      });
+      if (olds.length) setTimeout(() => olds.forEach(o => o.remove()), 620);
+      /* hard cap as a belt-and-braces guard against any pile-up */
+      const all = $$('.scene', slot);
+      if (all.length > 4) all.slice(0, all.length - 4).forEach(o => o.remove());
       $('.blackout', stage).classList.toggle('on', !!live.blackout);
       tick(); // immediate countdown/clock fill
     },
@@ -1583,13 +1612,21 @@ function renderSceneConfig() {
           <button class="btn" id="spotPrev" title="Previous in queue (pushes live)">◀ Prev</button>
           <button class="btn" id="spotNext" title="Next in queue (pushes live)">Next ▶</button>
         </div>
+        ${personDeck(cur) ? `<button class="btn dark big" id="spotDeck" title="Push their slide deck to the display">🎞&ensp;Start presentation</button>` : ''}
       </div>
-      ${cur ? `<div class="spot-info"><b>${esc(fullName(cur))}</b> · ${esc(cur.org || '')}${cur.session ? ` · ${esc(cur.session)}${cur.slot ? ' — ' + esc(cur.slot) : ''}` : ''}</div>` : ''}`;
+      ${cur ? `<div class="spot-info"><b>${esc(fullName(cur))}</b> · ${esc(cur.org || '')}${cur.session ? ` · ${esc(cur.session)}${cur.slot ? ' — ' + esc(cur.slot) : ''}` : ''}${personDeck(cur) ? ` · ▤ ${esc(personDeck(cur).name)} (${personDeck(cur).n} slides) attached` : ''}</div>` : ''}`;
     $('#spotQueue').onchange = (e) => { ui.spotQueue = e.target.value; ui.spotId = null; renderSceneConfig(); };
     $('#spotPerson').onchange = (e) => { ui.spotId = e.target.value; renderSceneConfig(); };
     $('#pushSpot').onclick = () => pushLive('spotlight', { personId: ui.spotId, queue: ui.spotQueue || 'All' });
     $('#spotPrev').onclick = () => stepSpotlight(-1);
     $('#spotNext').onclick = () => stepSpotlight(1);
+    const sd = $('#spotDeck');
+    if (sd) sd.onclick = () => {
+      const d = personDeck(cur); if (!d) return;
+      ui.sceneTab = 'slides'; ui.deckId = d.id;
+      pushLive('slides', { deckId: d.id, slide: Math.min(d.pos || 0, d.n - 1) });
+      renderSceneTabs(); renderSceneConfig(); renderDecks();
+    };
   }
 
   if (t === 'slides') {
@@ -1606,10 +1643,11 @@ function renderSceneConfig() {
     const meta = decks.find(d => d.id === ui.deckId);
     const isLive = state.live.scene === 'slides' && (state.live.params || {}).deckId === meta.id;
     const liveIdx = isLive ? Math.max(0, Math.min(+state.live.params.slide || 0, meta.n - 1)) : -1;
+    const owner = state.people.find(p => p.deckId === meta.id) || null;
     host.innerHTML = `
       <div class="desc">Step with <b>◀ ▶</b>, the <b>← →</b> / <b>PgUp PgDn</b> keys or a presenter clicker (works while either window is focused), or click a thumbnail to jump straight to a slide. The deck remembers where you left off when you cut away.</div>
       <div class="frow">
-        <div class="fld grow"><label>Presentation</label><select id="deckSel">
+        <div class="fld grow"><label>Presentation${owner ? ` — attached to ${esc(fullName(owner))}` : ''}</label><select id="deckSel">
           ${decks.map(d => `<option value="${d.id}" ${d.id === ui.deckId ? 'selected' : ''}>${esc(d.name)} — ${d.n} slides</option>`).join('')}
         </select></div>
       </div>
@@ -1621,9 +1659,16 @@ function renderSceneConfig() {
           <button class="btn" id="slNext" ${isLive ? '' : 'disabled'}>Next ▶</button>
         </div>
         <button class="btn" id="slRestart" title="Go to slide 1">⟲ From start</button>
+        ${owner ? `<button class="btn dark" id="slOwner" title="Cut back to their spotlight">👤 Spotlight ${esc(owner.name)}</button>` : ''}
       </div>
       <div class="strip" id="slideStrip">${stripHTML(meta, liveIdx)}</div>`;
     $('#deckSel').onchange = (e) => { ui.deckId = e.target.value; renderSceneConfig(); };
+    const so = $('#slOwner');
+    if (so) so.onclick = () => {
+      ui.sceneTab = 'spotlight'; ui.spotId = owner.id;
+      pushLive('spotlight', { personId: owner.id, queue: ui.spotQueue || 'All' });
+      renderSceneTabs(); renderSceneConfig();
+    };
     const goSlide = (i, quiet) => {
       meta.pos = i;
       pushLive('slides', { deckId: meta.id, slide: i }, quiet ? { quiet: true, msg: `Slide ${i + 1} / ${meta.n}` } : {});
@@ -1722,6 +1767,7 @@ function renderPeople() {
       </div>
       <div class="pp-actions">
         <button class="btn sm gold" data-act="spot" title="Push this person to the display now">Spotlight</button>
+        ${personDeck(p) ? `<button class="btn sm" data-act="deck" title="Present ${esc(fullName(p))}'s slides now">▤ Slides</button>` : ''}
         <button class="icobtn" data-act="up" title="Move up">▲</button>
         <button class="icobtn" data-act="down" title="Move down">▼</button>
         <button class="icobtn" data-act="edit" title="Edit">✎</button>
@@ -1736,6 +1782,12 @@ function renderPeople() {
       const i = state.people.findIndex(x => x.id === id);
       if (act === 'edit') openPersonModal(personById(id));
       if (act === 'spot') { ui.spotId = id; ui.sceneTab = 'spotlight'; pushLive('spotlight', { personId: id, queue: ui.spotQueue || 'All' }); renderSceneTabs(); renderSceneConfig(); }
+      if (act === 'deck') {
+        const d = personDeck(personById(id)); if (!d) return;
+        ui.sceneTab = 'slides'; ui.deckId = d.id;
+        pushLive('slides', { deckId: d.id, slide: Math.min(d.pos || 0, d.n - 1) });
+        renderSceneTabs(); renderSceneConfig(); renderDecks();
+      }
       if (act === 'del') {
         const p = personById(id);
         if (confirm(`Delete ${fullName(p)}? This cannot be undone.`)) {
@@ -1758,12 +1810,14 @@ function renderDecks() {
     return;
   }
   const liveId = state.live.scene === 'slides' ? (state.live.params || {}).deckId : null;
-  list.innerHTML = decks.map(d => `
+  list.innerHTML = decks.map(d => {
+    const owners = state.people.filter(p => p.deckId === d.id).map(p => fullName(p));
+    return `
     <div class="pp-row" data-id="${d.id}">
       <div class="deck-ico">▤</div>
       <div class="pp-info">
         <div class="pp-name">${esc(d.name)}</div>
-        <div class="pp-meta">${d.n} ${d.n === 1 ? 'slide' : 'slides'}${d.id === liveId ? ` · <b style="color:#B03030">LIVE — slide ${Math.min(+state.live.params.slide || 0, d.n - 1) + 1}</b>` : ''}</div>
+        <div class="pp-meta">${d.n} ${d.n === 1 ? 'slide' : 'slides'}${owners.length ? ' · 👤 ' + esc(owners.join(', ')) : ''}${d.id === liveId ? ` · <b style="color:#B03030">LIVE — slide ${Math.min(+state.live.params.slide || 0, d.n - 1) + 1}</b>` : ''}</div>
       </div>
       <div class="pp-actions">
         <button class="btn sm gold" data-act="present" title="Push this deck to the display now">Present</button>
@@ -1771,7 +1825,7 @@ function renderDecks() {
         <button class="icobtn" data-act="export" title="Download as a portable deck file">⬇</button>
         <button class="icobtn warn" data-act="del" title="Delete">✕</button>
       </div>
-    </div>`).join('') +
+    </div>`; }).join('') +
     `<div class="deck-note">Decks are kept in this browser (they're too large for the JSON export). To move one to the event machine, download it with <b>⬇</b> and import that file there via <b>＋ Add presentation</b> — or simply re-upload the original PDF/images.</div>`;
 
   $$('.pp-row', list).forEach(row => {
@@ -1797,6 +1851,7 @@ function renderDecks() {
       if (act === 'del') {
         if (!confirm(`Delete “${meta.name}” (${meta.n} slides)? This cannot be undone.`)) return;
         state.decks = state.decks.filter(d => d.id !== id);
+        state.people.forEach(p => { if (p.deckId === id) p.deckId = ''; });
         delete deckCache[id];
         deckDB.del(id);
         if (state.live.scene === 'slides' && (state.live.params || {}).deckId === id) {
@@ -1822,20 +1877,28 @@ function openModal(html) {
 function escClose(e) { if (e.key === 'Escape') closeModal(); }
 function closeModal() { $('#modalVeil')?.remove(); window.removeEventListener('keydown', escClose); }
 
+/* Progress overlay — deliberately NOT a modal: it sits above any open
+   modal (e.g. the person editor) without closing it, and can't be
+   dismissed mid-conversion. */
 function openProgress(title) {
-  const veil = openModal(`
+  $('#progressVeil')?.remove();
+  const veil = document.createElement('div');
+  veil.className = 'modal-veil'; veil.id = 'progressVeil';
+  veil.style.zIndex = '300';
+  veil.innerHTML = `<div class="modal" style="max-width:460px">
     <div class="m-h"><h2>${esc(title)}</h2></div>
     <div class="m-b">
       <div id="progTxt" style="font-size:13.5px;color:var(--cp-dim);margin-bottom:12px">Starting…</div>
       <div class="progress-bar"><i id="progBar"></i></div>
-    </div>`);
+    </div></div>`;
+  document.body.appendChild(veil);
   return {
     set(txt, frac) {
       const t = $('#progTxt', veil), b = $('#progBar', veil);
       if (t) t.textContent = txt;
       if (b) b.style.width = Math.round(Math.max(0, Math.min(1, frac || 0)) * 100) + '%';
     },
-    done() { closeModal(); },
+    done() { veil.remove(); },
   };
 }
 
@@ -1869,8 +1932,10 @@ function openPptxHelp(fname) {
 }
 
 function openPersonModal(person) {
-  const p = person || { id: null, honorific: '', name: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null };
+  const p = person || { id: null, honorific: '', name: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null, deckId: '' };
   let draftPhoto = p.photo;
+  const deckOpts = (sel) => `<option value="">— none —</option>` +
+    (state.decks || []).map(d => `<option value="${d.id}" ${d.id === sel ? 'selected' : ''}>${esc(d.name)} (${d.n} slides)</option>`).join('');
   const veil = openModal(`
     <div class="m-h"><h2>${person ? 'Edit person' : 'Add person'}</h2><button class="btn sm x" id="mClose">✕</button></div>
     <div class="m-b">
@@ -1900,6 +1965,15 @@ function openPersonModal(person) {
           </select>
           <input id="fCatOther" placeholder="New category name" style="display:none"></div>
       </div>
+      <div class="frow"><div class="fld grow"><label>Presentation (optional — their slide deck)</label>
+        <div style="display:flex;gap:8px">
+          <select id="fDeck" style="flex:1;min-width:0">${deckOpts(p.deckId || '')}</select>
+          <button class="btn" id="fDeckUp" title="Upload a new deck and attach it to this person">⬆ Upload deck</button>
+        </div>
+        <input type="file" id="fDeckFile" hidden multiple
+          accept="image/*,.pdf,application/pdf,.ppt,.pptx,.json,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint">
+        <div style="font-size:11.5px;color:var(--cp-dim);margin-top:6px">With a deck attached, spotlighting this person gives you a one-click <b>🎞 Start presentation</b> — and the slides panel a one-click way back to them.</div>
+      </div></div>
       <div class="frow"><div class="fld grow"><label>Bio (a paragraph)</label><textarea id="fBio" rows="5" placeholder="A short professional biography…">${esc(p.bio)}</textarea></div></div>
     </div>
     <div class="m-f">
@@ -1912,6 +1986,13 @@ function openPersonModal(person) {
     const other = e.target.value === '__other';
     $('#fCatOther', veil).style.display = other ? '' : 'none';
     if (other) $('#fCatOther', veil).focus();
+  };
+  $('#fDeckUp', veil).onclick = () => $('#fDeckFile', veil).click();
+  $('#fDeckFile', veil).onchange = async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    const id = await handleDeckFiles(files, { background: true });
+    const sel = $('#fDeck', veil);
+    if (id && sel) { sel.innerHTML = deckOpts(id); toast('Deck attached — remember to Save'); }
   };
   $('#btnPickPhoto', veil).onclick = () => $('#fPhoto', veil).click();
   $('#fPhoto', veil).onchange = async (e) => {
@@ -1939,6 +2020,7 @@ function openPersonModal(person) {
       category: catSel === '__other' ? ($('#fCatOther', veil).value.trim() || 'Speaker') : catSel,
       bio: $('#fBio', veil).value.trim(),
       photo: draftPhoto,
+      deckId: $('#fDeck', veil).value || '',
     };
     if (person) Object.assign(person, data);
     else state.people.push({ id: uid(), ...data });
@@ -2078,7 +2160,7 @@ function importJSON(e) {
       const d = JSON.parse(fr.result);
       if (!d || !Array.isArray(d.people)) throw new Error('bad shape');
       if (!confirm(`Import ${d.people.length} people${d.settings ? ' + settings' : ''}? This replaces the current data.`)) return;
-      state.people = d.people.map(p => ({ id: p.id || uid(), honorific: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null, ...p }));
+      state.people = d.people.map(p => ({ id: p.id || uid(), honorific: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null, deckId: '', ...p }));
       if (d.settings) state.settings = Object.assign(defaultState(false).settings, d.settings);
       if (d.assets) state.assets = Object.assign({ confLogo: null, rpaLogo: null }, d.assets);
       persist(); renderAll(); initControlHeaderMark();
