@@ -29,7 +29,7 @@ your confidence monitor — so every scene shows in both places at once.
 
 The display can also be opened manually: `index.html#display`.
 
-## The four scenes
+## The five scenes
 
 | Scene | What it shows | Live controls |
 |---|---|---|
@@ -37,8 +37,42 @@ The display can also be opened manually: `index.html#display`.
 | **② Panel Grid** | Everyone (or one category) as circular gold-ring photos with name, affiliation and topic — IAEA-panel style | group picker + custom heading |
 | **③ Speaker Spotlight** | One person full-screen: large photo, name, title, topic, session chip and bio | **◀ Prev / Next ▶** steps the queue (also ← / → keys); every person row has an instant **Spotlight** button |
 | **④ Countdown & Stats** | Live countdown to the next session + Day X of 4, session count, speaker count, theme | target time, session label, quick-set buttons (+5/+10/+15/+30 min, top of next hour) |
+| **⑤ Slides** | An uploaded presentation, full-screen | **◀ Prev / Next ▶**, ← → / PgUp PgDn keys or a presenter clicker; clickable thumbnail strip; per-deck resume position |
 
 **○ Blackout** fades the display to black instantly (and back).
+
+Every scene change is the same smooth crossfade, so you can cut from a slide
+to a Speaker Spotlight (or the Countdown) and back **mid-presentation** and it
+reads as one continuous show.
+
+## Presenting a PowerPoint
+
+Browsers cannot render `.pptx` files with perfect fidelity, so the app presents
+an **exported copy** of the deck — pixel-identical to what PowerPoint shows.
+Under **Presentations → ＋ Add presentation** upload either:
+
+1. **A PDF export** — in PowerPoint: *File → Save As → PDF*. The app converts
+   each page to a slide (this one-time conversion fetches the pdf.js engine
+   from a CDN, so it needs internet **once**; presenting afterwards is fully
+   offline).
+2. **Slide images** — in PowerPoint: *File → Export → Change File Type → PNG →
+   All Slides*, then upload the whole folder of images in one go (they are
+   ordered automatically). No internet needed at any point.
+
+Dropping a raw `.pptx` on the app shows these instructions.
+
+Notes:
+
+- Slides are stored in the browser's **IndexedDB** (they are too large for the
+  JSON export). To move a deck to the event machine, use the **⬇** button on
+  the deck (downloads a portable `.rpo8deck.json`) and import it there via
+  **＋ Add presentation** — or just re-upload the original PDF/images.
+- Each deck remembers its position, so cutting away to a Spotlight and coming
+  back resumes on the slide you left.
+- A presenter clicker (PageUp/PageDown or arrow keys) works while **either**
+  window is focused — control panel or projector window.
+- Animations/videos inside PowerPoint become still slides; the app supplies
+  the transitions between slides instead.
 
 ## People & data
 

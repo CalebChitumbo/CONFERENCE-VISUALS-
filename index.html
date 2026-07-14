@@ -278,6 +278,17 @@ img { max-width:100%; }
 .c-stat .st-l { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.2em; font-size:17px; color:var(--falls-mist); margin-top:10px; }
 .sc-cd .c-theme { font-size:27px; margin-top:52px; max-width:1150px; }
 
+/* ── SCENE: SLIDES (uploaded presentation deck) ───────────────── */
+.sc-slides { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.sc-slides .slide-img { width:100%; height:100%; object-fit:contain; animation: slideImgIn .4s ease both; }
+@keyframes slideImgIn { from { opacity:0; } to { opacity:1; } }
+.scene.no-anim .slide-img { animation:none; }
+.sc-slides .slide-msg { font-family:var(--font-subhead); font-style:italic; font-size:34px; color:var(--falls-mist); text-align:center; max-width:1150px; padding:0 80px; }
+.sc-slides .slide-loading { animation: pulse 1.6s ease-in-out infinite; }
+/* stepping within one deck crossfades faster than a full scene change */
+.scene.slide-step { animation-duration:.32s; }
+.scene.out.slide-step { animation-duration:.24s; }
+
 /* ── Blackout ─────────────────────────────────────────────────── */
 .blackout { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .8s ease; z-index:60; }
 .blackout.on { opacity:1; pointer-events:auto; }
@@ -448,6 +459,21 @@ body.mode-display.is-fs .disp-banner { display:none; }
 .icobtn.warn:hover { color:#B03030; border-color:#E8C5C5; }
 .pp-empty { padding:40px 20px; text-align:center; color:var(--cp-dim); font-size:14px; line-height:1.7; }
 
+/* Presentations (slide decks) */
+.deck-ico { width:46px; height:46px; border-radius:10px; flex:none; background:var(--charcoal); color:var(--falls-gold);
+  display:flex; align-items:center; justify-content:center; font-size:20px; border:2px solid var(--falls-gold); }
+.slide-pos { font-family:var(--font-mono); font-size:13px; color:var(--cp-dim); min-width:70px; text-align:center; }
+.strip { position:relative; display:flex; gap:8px; overflow-x:auto; padding:12px 2px 4px; }
+.strip img { height:70px; width:auto; border-radius:5px; border:2px solid var(--cp-border); cursor:pointer; flex:none; background:#fff; }
+.strip img:hover { border-color:var(--falls-gold); }
+.strip img.cur { border-color:var(--falls-gold); box-shadow:0 0 0 2px rgba(201,162,39,.3); }
+.strip-loading { font-size:12.5px; color:var(--cp-dim); padding:8px 2px; }
+.progress-bar { height:9px; border-radius:99px; background:#EEE9DB; overflow:hidden; }
+.progress-bar i { display:block; height:100%; width:0%; background:var(--falls-gold); border-radius:99px; transition:width .25s ease; }
+.pptx-steps { font-size:13.5px; line-height:1.65; color:var(--cp-text); margin:6px 0 2px; padding-left:20px; }
+.pptx-steps li { margin-bottom:4px; }
+.deck-note { font-size:12px; color:var(--cp-dim); padding:10px 18px 14px; line-height:1.55; border-top:1px dashed var(--cp-border); }
+
 /* Modal */
 .modal-veil {
   position:fixed; inset:0; background:rgba(26,27,29,.55); z-index:200;
@@ -604,6 +630,7 @@ function defaultState(withSamples) {
     },
     assets: { confLogo: null, rpaLogo: null },
     people: withSamples ? SAMPLE_PEOPLE.map(p => ({ id: uid(), photo: null, ...p })) : [],
+    decks: [],   /* slide-deck metadata only — the images live in IndexedDB */
     live: { scene: 'title', params: {}, blackout: false, pushedAt: 0 },
   };
 }
@@ -617,6 +644,7 @@ function loadState() {
       if (s && Array.isArray(s.people) && s.settings) {
         state = Object.assign(defaultState(false), s);
         state.settings = Object.assign(defaultState(false).settings, s.settings);
+        if (!Array.isArray(state.decks)) state.decks = [];
         return;
       }
     }
@@ -685,6 +713,245 @@ function logoHTML(kind, cls) {
   if (asset) return `<img class="${cls || ''}" src="${asset}" alt="">`;
   /* try the file on disk; if it 404s, swap in the typographic fallback */
   return `<img class="${cls || ''}" src="${file}" alt="" onerror="this.outerHTML=${esc(JSON.stringify(fall))}">`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   2b. SLIDE DECKS — presentation upload, storage & stepping
+   Metadata (id, name, slide count, position) lives in state.decks;
+   the slide images themselves live in IndexedDB, which both windows
+   share, so only tiny messages ever cross the sync channel.
+   ════════════════════════════════════════════════════════════════ */
+const deckDB = (() => {
+  let dbp = null;
+  const mem = new Map();               /* fallback when IndexedDB is unavailable */
+  function open() {
+    if (!dbp) dbp = new Promise((resolve) => {
+      let req;
+      try { req = indexedDB.open('rpo8-decks', 1); } catch (e) { return resolve(null); }
+      req.onupgradeneeded = () => { req.result.createObjectStore('decks', { keyPath: 'id' }); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror  = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    });
+    return dbp;
+  }
+  return {
+    async put(deck) {
+      const db = await open();
+      if (!db) { mem.set(deck.id, deck); return false; }
+      return new Promise((res, rej) => {
+        const t = db.transaction('decks', 'readwrite');
+        t.objectStore('decks').put(deck);
+        t.oncomplete = () => res(true);
+        t.onerror = () => rej(t.error);
+      });
+    },
+    async get(id) {
+      const db = await open();
+      if (!db) return mem.get(id) || null;
+      return new Promise((res) => {
+        const t = db.transaction('decks', 'readonly');
+        const rq = t.objectStore('decks').get(id);
+        rq.onsuccess = () => res(rq.result || mem.get(id) || null);
+        rq.onerror = () => res(mem.get(id) || null);
+      });
+    },
+    async del(id) {
+      mem.delete(id);
+      const db = await open(); if (!db) return;
+      return new Promise((res) => {
+        const t = db.transaction('decks', 'readwrite');
+        t.objectStore('decks').delete(id);
+        t.oncomplete = res; t.onerror = res;
+      });
+    },
+  };
+})();
+
+const deckCache = {};                      /* deckId → full deck (in-memory) */
+const deckLoading = {};
+function ensureDeck(id) {
+  if (deckCache[id]) return Promise.resolve(deckCache[id]);
+  if (!deckLoading[id]) deckLoading[id] = deckDB.get(id).then(d => {
+    if (d) deckCache[id] = d;
+    delete deckLoading[id];
+    return d || null;
+  });
+  return deckLoading[id];
+}
+
+/* Step the LIVE slide by ±1. Shared by both windows (control buttons /
+   arrow keys / a presenter clicker focused on the display window). */
+function slidesStep(dir) {
+  const lv = state.live;
+  if (lv.scene !== 'slides') return -1;
+  const meta = (state.decks || []).find(d => d.id === (lv.params || {}).deckId);
+  if (!meta) return -1;
+  const cur = Math.max(0, Math.min(+lv.params.slide || 0, meta.n - 1));
+  const next = Math.max(0, Math.min(cur + dir, meta.n - 1));
+  if (next === cur) return -1;
+  meta.pos = next;                         /* remember position per deck */
+  state.live = { ...lv, params: { ...lv.params, slide: next }, pushedAt: Date.now() };
+  persist();
+  return next;
+}
+
+/* ── Conversion helpers ──────────────────────────────────────── */
+function thumbFromCanvas(c) {
+  const w = 240, h = Math.max(1, Math.round(c.height * (w / c.width)));
+  const t = document.createElement('canvas'); t.width = w; t.height = h;
+  const ctx = t.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(c, 0, 0, w, h);
+  return t.toDataURL('image/jpeg', 0.7);
+}
+
+/* Slide image → { slide, thumb } data-URLs (white backing, ≤1920×1080) */
+function slideDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const sc = Math.min(1, 1920 / img.width, 1080 / img.height);
+        const w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve({ slide: c.toDataURL('image/jpeg', 0.85), thumb: thumbFromCanvas(c) });
+      };
+      img.onerror = reject;
+      img.src = fr.result;
+    };
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+/* pdf.js is fetched from a CDN only when a PDF is uploaded (once, with
+   internet); the worker is inlined via a blob URL so file:// pages work. */
+let pdfjsP = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfjsP) return pdfjsP;
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
+  pdfjsP = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = base + '/pdf.min.js';
+    s.onload = async () => {
+      const lib = window.pdfjsLib;
+      if (!lib) { pdfjsP = null; return reject(new Error('offline')); }
+      try {
+        const code = await fetch(base + '/pdf.worker.min.js').then(r => r.text());
+        lib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+      } catch (e) { lib.GlobalWorkerOptions.workerSrc = base + '/pdf.worker.min.js'; }
+      resolve(lib);
+    };
+    s.onerror = () => { pdfjsP = null; reject(new Error('offline')); };
+    document.head.appendChild(s);
+  });
+  return pdfjsP;
+}
+
+/* ── Upload pipeline (control panel) ─────────────────────────── */
+async function handleDeckFiles(files) {
+  if (!files.length) return;
+  const ext = f => (f.name.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+  const pptx = files.find(f => ['ppt', 'pptx'].includes(ext(f)));
+  const pdf  = files.find(f => f.type === 'application/pdf' || ext(f) === 'pdf');
+  const json = files.find(f => ext(f) === 'json');
+  const imgs = files.filter(f => /^image\//.test(f.type));
+  if (pptx)      openPptxHelp(pptx.name);
+  else if (pdf)  await deckFromPdf(pdf);
+  else if (json) await importDeckFile(json);
+  else if (imgs.length) await deckFromImages(imgs);
+  else toast('⚠ Upload a PDF export of the PowerPoint, the slides as PNG/JPG images, or a deck file (.rpo8deck.json)', 5000);
+}
+
+async function deckFromImages(imgs) {
+  /* natural sort so Slide2 comes before Slide10 */
+  imgs.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  const prog = openProgress('Preparing slides');
+  const slides = [], thumbs = [];
+  try {
+    for (let i = 0; i < imgs.length; i++) {
+      prog.set(`Processing image ${i + 1} of ${imgs.length}…`, (i + 1) / imgs.length);
+      const out = await slideDataURL(imgs[i]);
+      slides.push(out.slide); thumbs.push(out.thumb);
+    }
+    const name = imgs.length === 1
+      ? imgs[0].name.replace(/\.[^.]+$/, '')
+      : (imgs[0].name.replace(/\.[^.]+$/, '').replace(/\d+$/, '').replace(/[-_ .]+$/, '') || 'Slides');
+    prog.done();
+    await saveDeck(name || 'Slides', slides, thumbs);
+  } catch (e) { prog.done(); toast('⚠ Could not read one of the images'); }
+}
+
+async function deckFromPdf(file) {
+  const prog = openProgress('Converting the PDF to slides');
+  try {
+    prog.set('Loading the PDF engine (needs internet once)…', 0);
+    const lib = await loadPdfJs();
+    const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const slides = [], thumbs = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      prog.set(`Rendering slide ${p} of ${doc.numPages}…`, p / doc.numPages);
+      const page = await doc.getPage(p);
+      const v1 = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: Math.min(1920 / v1.width, 1080 / v1.height) });
+      const c = document.createElement('canvas');
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      slides.push(c.toDataURL('image/jpeg', 0.85));
+      thumbs.push(thumbFromCanvas(c));
+    }
+    prog.done();
+    await saveDeck(file.name.replace(/\.[^.]+$/, ''), slides, thumbs);
+  } catch (e) {
+    prog.done();
+    toast(e && e.message === 'offline'
+      ? '⚠ Converting a PDF needs internet once (to fetch the PDF engine). Connect briefly and retry — or export the slides as PNG images from PowerPoint and upload those instead.'
+      : '⚠ Could not read that PDF — try re-exporting it from PowerPoint', 6500);
+  }
+}
+
+async function saveDeck(name, slides, thumbs) {
+  if (!slides.length) { toast('⚠ No slides found in that upload'); return; }
+  const deck = { id: uid(), name: name || 'Presentation', n: slides.length, slides, thumbs, addedAt: Date.now() };
+  deckCache[deck.id] = deck;
+  const stored = await deckDB.put(deck).catch(() => false);
+  state.decks.push({ id: deck.id, name: deck.name, n: deck.n, addedAt: deck.addedAt, pos: 0 });
+  persist();
+  ui.sceneTab = 'slides'; ui.deckId = deck.id;
+  renderDecks(); renderSceneTabs(); renderSceneConfig();
+  toast(stored === false
+    ? `“${deck.name}” is ready (${deck.n} slides) — ⚠ this browser can't store it permanently, so it lasts until the tab closes`
+    : `“${deck.name}” is ready — ${deck.n} slides. Press ▶ Display Slides to put it on screen.`, 4500);
+}
+
+async function exportDeck(id) {
+  const deck = await ensureDeck(id);
+  if (!deck) { toast('⚠ Deck not found in this browser — re-upload the original file'); return; }
+  const blob = new Blob([JSON.stringify({ app: 'rpo8-deck', version: 1, name: deck.name, n: deck.n, slides: deck.slides, thumbs: deck.thumbs })], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (deck.name.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'deck') + '.rpo8deck.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Deck file downloaded — import it on the event machine with ＋ Add presentation');
+}
+
+async function importDeckFile(f) {
+  try {
+    const d = JSON.parse(await f.text());
+    if (d && d.app === 'rpo8-deck' && Array.isArray(d.slides) && d.slides.length) {
+      const thumbs = (Array.isArray(d.thumbs) && d.thumbs.length === d.slides.length) ? d.thumbs : d.slides;
+      await saveDeck(d.name || f.name.replace(/\..*$/, ''), d.slides, thumbs);
+    } else toast('⚠ That JSON is not a deck export (expected a .rpo8deck.json file)');
+  } catch (e) { toast('⚠ Could not read that file'); }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -816,11 +1083,36 @@ function sceneCountdown() {
   </div>`;
 }
 
+function sceneSlides(params) {
+  const meta = (state.decks || []).find(d => d.id === (params || {}).deckId);
+  if (!meta) return `<div class="sc-slides"><div class="slide-msg a">No presentation selected — upload one under “Presentations” in the control panel, then press ▶ Display Slides.</div></div>`;
+  const i = Math.max(0, Math.min(+params.slide || 0, meta.n - 1));
+  const deck = deckCache[meta.id];
+  return `<div class="sc-slides" data-slides="${meta.id}" data-idx="${i}">
+    ${deck ? slideImgHTML(deck, i) : `<div class="slide-msg slide-loading label" style="font-size:22px">Loading slide ${i + 1} of ${meta.n}…</div>`}
+  </div>`;
+}
+function slideImgHTML(deck, i) { return `<img class="slide-img" src="${deck.slides[i]}" alt="Slide ${i + 1}">`; }
+/* Slide images load async from IndexedDB — fill them in once available
+   and pre-decode the neighbouring slides so stepping is instant. */
+function hydrateSlides(scopeEl) {
+  $$('[data-slides]', scopeEl).forEach(host => {
+    const id = host.dataset.slides, i = +host.dataset.idx;
+    ensureDeck(id).then(deck => {
+      if (!host.isConnected) return;
+      if (!deck) { host.innerHTML = `<div class="slide-msg">This slide deck isn't stored in this browser — re-upload it (or import its deck file) in the control panel.</div>`; return; }
+      if (!host.querySelector('img')) host.innerHTML = slideImgHTML(deck, i);
+      [i - 1, i + 1].forEach(j => { if (deck.slides[j]) { const im = new Image(); im.src = deck.slides[j]; } });
+    });
+  });
+}
+
 function buildSceneHTML(live) {
   switch (live.scene) {
     case 'grid':      return sceneGrid(live.params || {});
     case 'spotlight': return sceneSpotlight(live.params || {});
     case 'countdown': return sceneCountdown();
+    case 'slides':    return sceneSlides(live.params || {});
     case 'title':
     default:          return sceneTitle();
   }
@@ -869,7 +1161,11 @@ function makeStage(host) {
       const sc = document.createElement('div');
       sc.className = 'scene' + ((animate && contentChanged) ? '' : ' no-anim');
       sc.innerHTML = buildSceneHTML(live);
+      /* stepping within the same deck → quicker crossfade than a scene change */
+      const oh = old && old.querySelector('[data-slides]'), nh = sc.querySelector('[data-slides]');
+      if (oh && nh && oh.dataset.slides === nh.dataset.slides) { sc.classList.add('slide-step'); old.classList.add('slide-step'); }
       slot.appendChild(sc);
+      hydrateSlides(sc);
       if (old) { old.classList.add('out'); setTimeout(() => old.remove(), 620); }
       $('.blackout', stage).classList.toggle('on', !!live.blackout);
       tick(); // immediate countdown/clock fill
@@ -977,7 +1273,17 @@ function initDisplay() {
   $('#btnBannerX').onclick = () => { $('#dispBanner').remove(); };
   document.addEventListener('fullscreenchange', () =>
     document.body.classList.toggle('is-fs', !!document.fullscreenElement));
-  window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'f') goFs(); });
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'f') { goFs(); return; }
+    /* presenter clicker / arrow keys work on this window too while slides are live */
+    if (forced || state.live.scene !== 'slides') return;
+    const fwd  = e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ';
+    const back = e.key === 'ArrowLeft'  || e.key === 'PageUp';
+    if (fwd || back) {
+      e.preventDefault();
+      if (slidesStep(fwd ? 1 : -1) >= 0) stagePort.mount(state.live, true);
+    }
+  });
   window.addEventListener('dblclick', goFs);
   let idleT;
   const wake = () => {
@@ -994,15 +1300,25 @@ function initDisplay() {
 const ui = { sceneTab: 'title', q: '', catFilter: 'All', displayLastSeen: 0 };
 let preview = null;
 
-function pushLive(scene, params = {}) {
+function pushLive(scene, params = {}, opts = {}) {
   state.live = { ...state.live, scene, params, pushedAt: Date.now() };
   persist();
   preview && preview.mount(state.live, true);
   renderSceneTabs();
-  toast(`Pushed “${sceneLabel(scene)}” to the display`);
+  if (opts.quiet) { if (opts.msg) toast(opts.msg, 1400); }
+  else toast(`Pushed “${sceneLabel(scene)}” to the display`);
 }
 function sceneLabel(s) {
-  return { title: 'Title / Welcome', grid: 'Panel Grid', spotlight: 'Speaker Spotlight', countdown: 'Countdown & Stats' }[s] || s;
+  return { title: 'Title / Welcome', grid: 'Panel Grid', spotlight: 'Speaker Spotlight', countdown: 'Countdown & Stats', slides: 'Presentation Slides' }[s] || s;
+}
+
+/* Step the live slides from the control panel (buttons / keys / clicker) */
+function stepSlideLive(dir) {
+  const i = slidesStep(dir);
+  if (i < 0) return;
+  preview && preview.mount(state.live, true);
+  if (ui.sceneTab === 'slides') renderSceneConfig();
+  renderDecks();
 }
 
 function initControl() {
@@ -1061,9 +1377,20 @@ function initControl() {
           </div>
           <div class="pp-list" id="ppList"></div>
         </div>
+
+        <div class="card" style="margin-top:22px">
+          <div class="card-h">
+            <span class="ttl">Presentations — slide decks</span><span class="pp-count" id="deckCount"></span>
+            <span style="flex:1"></span>
+            <button class="btn gold" id="btnAddDeck">＋ Add presentation</button>
+          </div>
+          <div class="pp-list" id="deckList"></div>
+        </div>
       </section>
     </main>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <input type="file" id="deckFile" hidden multiple
+      accept="image/*,.pdf,application/pdf,.ppt,.pptx,.json,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint">
   `;
 
   preview = makeStage($('#previewHost'));
@@ -1118,13 +1445,20 @@ function initControl() {
   wireLogoInput('#fileRpa', 'rpaLogo');
   $('#ppSearch').oninput = (e) => { ui.q = e.target.value; renderPeople(); };
   $('#ppCatFilter').onchange = (e) => { ui.catFilter = e.target.value; renderPeople(); };
+  $('#btnAddDeck').onclick = () => $('#deckFile').click();
+  $('#deckFile').onchange = (e) => { const files = [...e.target.files]; e.target.value = ''; handleDeckFiles(files); };
 
-  /* keyboard: arrows drive the spotlight queue when it is live */
+  /* keyboard: arrows drive the spotlight queue / live slides */
   window.addEventListener('keydown', (e) => {
     if (/(INPUT|TEXTAREA|SELECT)/.test(document.activeElement.tagName)) return;
-    if (state.live.scene !== 'spotlight') return;
-    if (e.key === 'ArrowRight') stepSpotlight(1);
-    if (e.key === 'ArrowLeft') stepSpotlight(-1);
+    if (state.live.scene === 'spotlight') {
+      if (e.key === 'ArrowRight') stepSpotlight(1);
+      if (e.key === 'ArrowLeft') stepSpotlight(-1);
+    }
+    if (state.live.scene === 'slides') {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); stepSlideLive(1); }
+      if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   { e.preventDefault(); stepSlideLive(-1); }
+    }
   });
 
   /* display heartbeat */
@@ -1132,10 +1466,18 @@ function initControl() {
     bc.onmessage = (e) => {
       const d = e.data || {};
       if (d.type === 'display-online') ui.displayLastSeen = Date.now();
-      if (d.type === 'state' && d.state) { /* another control window */ state = d.state; renderAll(false); }
+      if (d.type === 'state' && d.state) { /* another window (display clicker-steps too) */ state = d.state; renderAll(true); }
     };
     setInterval(() => { try { bc.postMessage({ type: 'ping' }); } catch (e) {} }, 3000);
   }
+  /* polling fallback: adopt changes the display window wrote (clicker steps) */
+  setInterval(() => {
+    try {
+      const raw = store.getItem(LS_KEY); if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s && s.rev > state.rev) { state = s; renderAll(true); }
+    } catch (e) {}
+  }, 1500);
   setInterval(() => {
     const on = Date.now() - ui.displayLastSeen < 8000;
     $('#dispDot').classList.toggle('on', on);
@@ -1150,6 +1492,7 @@ function renderAll(remount = true) {
   renderSceneTabs();
   renderSceneConfig();
   renderPeople();
+  renderDecks();
   const notice = $('#logoNotice');
   if (notice) {
     notice.hidden = !!(state.assets.confLogo && state.assets.rpaLogo);
@@ -1166,6 +1509,7 @@ const SCENE_TABS = [
   { id: 'grid',      label: '② Panel Grid' },
   { id: 'spotlight', label: '③ Spotlight' },
   { id: 'countdown', label: '④ Countdown' },
+  { id: 'slides',    label: '⑤ Slides' },
 ];
 function renderSceneTabs() {
   const host = $('#sceneTabs'); if (!host) return;
@@ -1248,6 +1592,52 @@ function renderSceneConfig() {
     $('#spotNext').onclick = () => stepSpotlight(1);
   }
 
+  if (t === 'slides') {
+    const decks = state.decks || [];
+    if (!decks.length) {
+      host.innerHTML = `
+        <div class="desc">Show your PowerPoint full-screen on the display, then cut to a Spotlight or the Title screen and back whenever you like — every switch is a smooth crossfade. First add the deck under <b>Presentations</b> (right-hand panel): upload a <b>PDF export</b> of the PowerPoint, or the slides as <b>PNG/JPG images</b>.</div>
+        <div class="push-row"><button class="btn gold big" id="goDecks">＋ Add a presentation</button></div>`;
+      $('#goDecks').onclick = () => $('#deckFile').click();
+      return;
+    }
+    if (!ui.deckId || !decks.some(d => d.id === ui.deckId))
+      ui.deckId = ((state.live.scene === 'slides' && decks.find(d => d.id === (state.live.params || {}).deckId)) || decks[0]).id;
+    const meta = decks.find(d => d.id === ui.deckId);
+    const isLive = state.live.scene === 'slides' && (state.live.params || {}).deckId === meta.id;
+    const liveIdx = isLive ? Math.max(0, Math.min(+state.live.params.slide || 0, meta.n - 1)) : -1;
+    host.innerHTML = `
+      <div class="desc">Step with <b>◀ ▶</b>, the <b>← →</b> / <b>PgUp PgDn</b> keys or a presenter clicker (works while either window is focused), or click a thumbnail to jump straight to a slide. The deck remembers where you left off when you cut away.</div>
+      <div class="frow">
+        <div class="fld grow"><label>Presentation</label><select id="deckSel">
+          ${decks.map(d => `<option value="${d.id}" ${d.id === ui.deckId ? 'selected' : ''}>${esc(d.name)} — ${d.n} slides</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="push-row">
+        <button class="btn gold big" id="pushSlides">▶&ensp;Display Slides</button>
+        <div class="spot-nav">
+          <button class="btn" id="slPrev" ${isLive ? '' : 'disabled'}>◀ Prev</button>
+          <span class="slide-pos">${isLive ? `${liveIdx + 1} / ${meta.n}` : `at ${Math.min(meta.pos || 0, meta.n - 1) + 1} / ${meta.n}`}</span>
+          <button class="btn" id="slNext" ${isLive ? '' : 'disabled'}>Next ▶</button>
+        </div>
+        <button class="btn" id="slRestart" title="Go to slide 1">⟲ From start</button>
+      </div>
+      <div class="strip" id="slideStrip">${stripHTML(meta, liveIdx)}</div>`;
+    $('#deckSel').onchange = (e) => { ui.deckId = e.target.value; renderSceneConfig(); };
+    const goSlide = (i, quiet) => {
+      meta.pos = i;
+      pushLive('slides', { deckId: meta.id, slide: i }, quiet ? { quiet: true, msg: `Slide ${i + 1} / ${meta.n}` } : {});
+      renderSceneConfig(); renderDecks();
+    };
+    $('#pushSlides').onclick = () => goSlide(Math.min(meta.pos || 0, meta.n - 1));
+    $('#slRestart').onclick = () => goSlide(0, true);
+    $('#slPrev').onclick = () => stepSlideLive(-1);
+    $('#slNext').onclick = () => stepSlideLive(1);
+    $$('#slideStrip [data-jump]').forEach(im => im.onclick = () => goSlide(+im.dataset.jump, true));
+    const strip = $('#slideStrip'), cur = $('#slideStrip .cur');
+    if (strip && cur) strip.scrollLeft = Math.max(0, cur.offsetLeft - (strip.clientWidth - cur.offsetWidth) / 2);
+  }
+
   if (t === 'countdown') {
     const s = state.settings;
     host.innerHTML = `
@@ -1281,6 +1671,16 @@ function renderSceneConfig() {
       pushLive('countdown', {});
     };
   }
+}
+
+function stripHTML(meta, liveIdx) {
+  const deck = deckCache[meta.id];
+  if (!deck) {
+    ensureDeck(meta.id).then(() => { if (ui.sceneTab === 'slides') renderSceneConfig(); });
+    return `<div class="strip-loading">Loading thumbnails…</div>`;
+  }
+  return deck.thumbs.map((t, i) =>
+    `<img src="${t}" data-jump="${i}" class="${i === liveIdx ? 'cur' : ''}" title="Slide ${i + 1}" alt="Slide ${i + 1}">`).join('');
 }
 
 function stepSpotlight(dir) {
@@ -1348,6 +1748,66 @@ function renderPeople() {
   });
 }
 
+/* ── Presentations manager ────────────────────────────────────── */
+function renderDecks() {
+  const list = $('#deckList'); if (!list) return;
+  const decks = state.decks || [];
+  $('#deckCount').textContent = decks.length ? `${decks.length} ${decks.length === 1 ? 'deck' : 'decks'}` : '';
+  if (!decks.length) {
+    list.innerHTML = `<div class="pp-empty">No presentations yet.<br>Export your PowerPoint as a <b>PDF</b> (File → Save As → PDF)<br>or as <b>PNG images</b> (“All Slides”), then click <b>＋ Add presentation</b>.</div>`;
+    return;
+  }
+  const liveId = state.live.scene === 'slides' ? (state.live.params || {}).deckId : null;
+  list.innerHTML = decks.map(d => `
+    <div class="pp-row" data-id="${d.id}">
+      <div class="deck-ico">▤</div>
+      <div class="pp-info">
+        <div class="pp-name">${esc(d.name)}</div>
+        <div class="pp-meta">${d.n} ${d.n === 1 ? 'slide' : 'slides'}${d.id === liveId ? ` · <b style="color:#B03030">LIVE — slide ${Math.min(+state.live.params.slide || 0, d.n - 1) + 1}</b>` : ''}</div>
+      </div>
+      <div class="pp-actions">
+        <button class="btn sm gold" data-act="present" title="Push this deck to the display now">Present</button>
+        <button class="icobtn" data-act="rename" title="Rename">✎</button>
+        <button class="icobtn" data-act="export" title="Download as a portable deck file">⬇</button>
+        <button class="icobtn warn" data-act="del" title="Delete">✕</button>
+      </div>
+    </div>`).join('') +
+    `<div class="deck-note">Decks are kept in this browser (they're too large for the JSON export). To move one to the event machine, download it with <b>⬇</b> and import that file there via <b>＋ Add presentation</b> — or simply re-upload the original PDF/images.</div>`;
+
+  $$('.pp-row', list).forEach(row => {
+    const id = row.dataset.id;
+    row.querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => {
+      const act = btn.dataset.act;
+      const meta = (state.decks || []).find(d => d.id === id); if (!meta) return;
+      if (act === 'present') {
+        ui.sceneTab = 'slides'; ui.deckId = id;
+        pushLive('slides', { deckId: id, slide: Math.min(meta.pos || 0, meta.n - 1) });
+        renderSceneTabs(); renderSceneConfig(); renderDecks();
+      }
+      if (act === 'rename') {
+        const name = prompt('Rename this presentation:', meta.name);
+        if (name && name.trim()) {
+          meta.name = name.trim();
+          ensureDeck(id).then(deck => { if (deck) { deck.name = meta.name; deckDB.put(deck).catch(() => {}); } });
+          persist(); renderDecks();
+          if (ui.sceneTab === 'slides') renderSceneConfig();
+        }
+      }
+      if (act === 'export') exportDeck(id);
+      if (act === 'del') {
+        if (!confirm(`Delete “${meta.name}” (${meta.n} slides)? This cannot be undone.`)) return;
+        state.decks = state.decks.filter(d => d.id !== id);
+        delete deckCache[id];
+        deckDB.del(id);
+        if (state.live.scene === 'slides' && (state.live.params || {}).deckId === id) {
+          state.live = { ...state.live, scene: 'title', params: {}, pushedAt: Date.now() };
+        }
+        persist(); renderAll(); toast('Presentation deleted');
+      }
+    });
+  });
+}
+
 /* ── Modals ───────────────────────────────────────────────────── */
 function openModal(html) {
   closeModal();
@@ -1361,6 +1821,52 @@ function openModal(html) {
 }
 function escClose(e) { if (e.key === 'Escape') closeModal(); }
 function closeModal() { $('#modalVeil')?.remove(); window.removeEventListener('keydown', escClose); }
+
+function openProgress(title) {
+  const veil = openModal(`
+    <div class="m-h"><h2>${esc(title)}</h2></div>
+    <div class="m-b">
+      <div id="progTxt" style="font-size:13.5px;color:var(--cp-dim);margin-bottom:12px">Starting…</div>
+      <div class="progress-bar"><i id="progBar"></i></div>
+    </div>`);
+  return {
+    set(txt, frac) {
+      const t = $('#progTxt', veil), b = $('#progBar', veil);
+      if (t) t.textContent = txt;
+      if (b) b.style.width = Math.round(Math.max(0, Math.min(1, frac || 0)) * 100) + '%';
+    },
+    done() { closeModal(); },
+  };
+}
+
+function openPptxHelp(fname) {
+  const veil = openModal(`
+    <div class="m-h"><h2>Almost there — export the PowerPoint first</h2><button class="btn sm x" id="mClose">✕</button></div>
+    <div class="m-b">
+      <div style="font-size:13.5px;line-height:1.6">
+        Browsers can't render <b>${esc(fname)}</b> directly with perfect fidelity, so this app presents an
+        <b>exported copy</b> of the deck instead — every font, chart and layout stays exactly as PowerPoint shows it.
+        One quick step in PowerPoint, then upload the result here:
+      </div>
+      <div class="settings-sec">Option 1 — PDF (one click)</div>
+      <ol class="pptx-steps">
+        <li>In PowerPoint: <b>File → Save As</b> (or <b>Export</b>) → choose <b>PDF</b>.</li>
+        <li>Upload that PDF here. <i>Converting it needs internet once, to fetch the PDF engine.</i></li>
+      </ol>
+      <div class="settings-sec">Option 2 — Images (works fully offline)</div>
+      <ol class="pptx-steps">
+        <li>In PowerPoint: <b>File → Export → Change File Type → PNG</b> → choose <b>All Slides</b>.</li>
+        <li>Upload the whole folder of images in one go — they're put in order automatically.</li>
+      </ol>
+      <div style="font-size:12px;color:var(--cp-dim);margin-top:14px">Animations and embedded video become still slides — the crossfades between slides come from this app instead.</div>
+    </div>
+    <div class="m-f">
+      <button class="btn" id="mCancel">Close</button>
+      <button class="btn gold big" id="pptxPick">Upload the PDF / images…</button>
+    </div>`);
+  $('#mClose', veil).onclick = $('#mCancel', veil).onclick = closeModal;
+  $('#pptxPick', veil).onclick = () => { closeModal(); $('#deckFile').click(); };
+}
 
 function openPersonModal(person) {
   const p = person || { id: null, honorific: '', name: '', org: '', topic: '', session: '', slot: '', category: 'Speaker', bio: '', photo: null };
@@ -1523,7 +2029,8 @@ function openSettingsModal() {
     persist(); closeModal(); renderAll(); toast('Sample line-up added');
   };
   $('#sWipe', veil).onclick = () => {
-    if (confirm('Really clear ALL people, settings and logos? Export a JSON backup first if unsure.')) {
+    if (confirm('Really clear ALL people, settings, logos and slide decks? Export a JSON backup first if unsure.')) {
+      (state.decks || []).forEach(d => { deckDB.del(d.id); delete deckCache[d.id]; });
       state = defaultState(false); persist(); closeModal(); renderAll(); toast('All data cleared');
     }
   };
