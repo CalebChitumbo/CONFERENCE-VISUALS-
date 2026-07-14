@@ -34,8 +34,8 @@ The display can also be opened manually: `index.html#display`.
 | Scene | What it shows | Live controls |
 |---|---|---|
 | **① Title / Welcome** | Event name, theme, dates, venue, conference + RPA logos | wording editable in Settings |
-| **② Panel Grid** | Everyone (or one category) as circular gold-ring photos with name, affiliation and topic — IAEA-panel style | group picker + custom heading |
-| **③ Speaker Spotlight** | One person full-screen: large photo, name, title, topic, session chip and bio | **◀ Prev / Next ▶** steps the queue (also ← / → keys); every person row has an instant **Spotlight** button |
+| **② Panel Grid** | Any group as circular gold-ring photos — everyone, All Speakers, RPA / Internal, Moderators, one session (whole or a Morning / Mid-morning / Afternoon part), or one category | grouped picker + custom heading |
+| **③ Speaker Spotlight** | One person full-screen: large photo, name, title, topic, session chip and bio — role-aware when queued by session | **◀ Prev / Next ▶** steps the queue in programme order (also ← / → keys); every person row has an instant **Spotlight** button |
 | **④ Countdown & Stats** | Live countdown to the next session + Day X of 4, session count, speaker count, theme | target time, session label, quick-set buttons (+5/+10/+15/+30 min, top of next hour) |
 | **⑤ Slides** | An uploaded presentation — **framed** on the animated mist background (default) or full-bleed | **◀ Prev / Next ▶**, ← → / PgUp PgDn keys or a presenter clicker; clickable thumbnail strip; per-deck resume position; Look switcher (framed / full-bleed) |
 
@@ -88,10 +88,13 @@ Notes:
 ## People & data
 
 Per person: honorific, full name, organisation, topic, session, time slot,
-photo (uploaded locally, auto-resized, shown in a circular gold frame), bio and
-a category tag (Keynote, Speaker, Panellist, RPA/RPO Official, Organising
-Committee — or type your own). Add / edit / delete / reorder from the People
-panel; search and filter by category.
+photo (uploaded locally, auto-resized, shown in a circular gold frame), bio, a
+category tag (Keynote, Speaker, Moderator, Panellist, RPA/RPO Official,
+Organising Committee — or type your own), **programme roles** (one row per
+engagement: session, part, role, topic, slot — these power the Session /
+Moderators / RPA group views) and an optional **attached slide deck**.
+Add / edit / delete / reorder from the People panel; search matches roles too.
+First run offers the **official programme line-up** in one click.
 
 - **Persistence** — everything is saved in the browser (`localStorage`)
   automatically, including photos and logos.
