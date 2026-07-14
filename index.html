@@ -281,6 +281,15 @@ img { max-width:100%; }
 /* ── SCENE: SLIDES (uploaded presentation deck) ───────────────── */
 .sc-slides { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
 .sc-slides .slide-img { width:100%; height:100%; object-fit:contain; animation: slideImgIn .4s ease both; }
+/* “Framed” look (default): the slide floats on the animated mist
+   background inside a gold-edged frame, so the stage keeps breathing */
+.sc-slides.framed { padding:44px 60px; }
+.sc-slides.framed .slide-img {
+  width:auto; height:auto; max-width:100%; max-height:100%;
+  border:2px solid rgba(201,162,39,.45); border-radius:8px;
+  background:#000;
+  box-shadow: 0 34px 90px rgba(0,0,0,.62), 0 0 70px rgba(201,162,39,.06);
+}
 @keyframes slideImgIn { from { opacity:0; } to { opacity:1; } }
 .scene.no-anim .slide-img { animation:none; }
 .sc-slides .slide-msg { font-family:var(--font-subhead); font-style:italic; font-size:34px; color:var(--falls-mist); text-align:center; max-width:1150px; padding:0 80px; }
@@ -627,6 +636,7 @@ function defaultState(withSamples) {
       sessionsOverride: '',
       countdownTarget: '',
       countdownLabel: 'Opening Ceremony',
+      slideStyle: 'framed',   /* 'framed' = slide floats on the ambient background · 'full' = edge to edge */
     },
     assets: { confLogo: null, rpaLogo: null },
     people: withSamples ? SAMPLE_PEOPLE.map(p => ({ id: uid(), photo: null, ...p })) : [],
@@ -1103,7 +1113,8 @@ function sceneSlides(params) {
   if (!meta) return `<div class="sc-slides"><div class="slide-msg a">No presentation selected — upload one under “Presentations” in the control panel, then press ▶ Display Slides.</div></div>`;
   const i = Math.max(0, Math.min(+params.slide || 0, meta.n - 1));
   const deck = deckCache[meta.id];
-  return `<div class="sc-slides" data-slides="${meta.id}" data-idx="${i}">
+  const framed = (state.settings.slideStyle || 'framed') !== 'full';
+  return `<div class="sc-slides ${framed ? 'framed' : ''}" data-slides="${meta.id}" data-idx="${i}">
     ${deck ? slideImgHTML(deck, i) : `<div class="slide-msg slide-loading label" style="font-size:22px">Loading slide ${i + 1} of ${meta.n}…</div>`}
   </div>`;
 }
@@ -1650,6 +1661,10 @@ function renderSceneConfig() {
         <div class="fld grow"><label>Presentation${owner ? ` — attached to ${esc(fullName(owner))}` : ''}</label><select id="deckSel">
           ${decks.map(d => `<option value="${d.id}" ${d.id === ui.deckId ? 'selected' : ''}>${esc(d.name)} — ${d.n} slides</option>`).join('')}
         </select></div>
+        <div class="fld" style="width:250px"><label>Look</label><select id="slStyle">
+          <option value="framed" ${(state.settings.slideStyle || 'framed') !== 'full' ? 'selected' : ''}>Framed · ambient background</option>
+          <option value="full" ${state.settings.slideStyle === 'full' ? 'selected' : ''}>Full-bleed · edge to edge</option>
+        </select></div>
       </div>
       <div class="push-row">
         <button class="btn gold big" id="pushSlides">▶&ensp;Display Slides</button>
@@ -1663,6 +1678,12 @@ function renderSceneConfig() {
       </div>
       <div class="strip" id="slideStrip">${stripHTML(meta, liveIdx)}</div>`;
     $('#deckSel').onchange = (e) => { ui.deckId = e.target.value; renderSceneConfig(); };
+    $('#slStyle').onchange = (e) => {
+      state.settings.slideStyle = e.target.value;
+      persist();               /* display picks this up and re-renders instantly */
+      preview && preview.mount(state.live, false);
+      toast(e.target.value === 'full' ? 'Slides now fill the screen edge to edge' : 'Slides now float on the animated background');
+    };
     const so = $('#slOwner');
     if (so) so.onclick = () => {
       ui.sceneTab = 'spotlight'; ui.spotId = owner.id;

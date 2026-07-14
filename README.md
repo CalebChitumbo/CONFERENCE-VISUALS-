@@ -37,7 +37,7 @@ The display can also be opened manually: `index.html#display`.
 | **② Panel Grid** | Everyone (or one category) as circular gold-ring photos with name, affiliation and topic — IAEA-panel style | group picker + custom heading |
 | **③ Speaker Spotlight** | One person full-screen: large photo, name, title, topic, session chip and bio | **◀ Prev / Next ▶** steps the queue (also ← / → keys); every person row has an instant **Spotlight** button |
 | **④ Countdown & Stats** | Live countdown to the next session + Day X of 4, session count, speaker count, theme | target time, session label, quick-set buttons (+5/+10/+15/+30 min, top of next hour) |
-| **⑤ Slides** | An uploaded presentation, full-screen | **◀ Prev / Next ▶**, ← → / PgUp PgDn keys or a presenter clicker; clickable thumbnail strip; per-deck resume position |
+| **⑤ Slides** | An uploaded presentation — **framed** on the animated mist background (default) or full-bleed | **◀ Prev / Next ▶**, ← → / PgUp PgDn keys or a presenter clicker; clickable thumbnail strip; per-deck resume position; Look switcher (framed / full-bleed) |
 
 **○ Blackout** fades the display to black instantly (and back).
 
