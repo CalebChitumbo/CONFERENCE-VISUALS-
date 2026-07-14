@@ -68,7 +68,13 @@ img { max-width:100%; }
   width:1920px; height:1080px;
   transform: translate(-50%,-50%) scale(1);
   transform-origin: center center;
-  background: var(--charcoal);
+  /* a softly lit, graded canvas — cool steel-mist above, warm falls-gold
+     glow below — so the light sweep has something to illuminate */
+  background:
+    radial-gradient(1250px 700px at 50% 112%, rgba(201,162,39,.16), transparent 62%),
+    radial-gradient(1100px 650px at 12% -10%, rgba(107,129,144,.30), transparent 60%),
+    radial-gradient(1200px 700px at 92% 6%,  rgba(168,181,189,.17), transparent 58%),
+    linear-gradient(175deg, #23262C 0%, #1B1D21 52%, #141519 100%);
   color: var(--mist-white);
   font-family: var(--font-body);
   overflow:hidden;
@@ -90,6 +96,25 @@ img { max-width:100%; }
   width:900px; height:400px; left:30%; top:-320px;
   background: radial-gradient(ellipse, rgba(201,162,39,.15), transparent 70%);
   animation: drift1 34s ease-in-out infinite alternate-reverse;
+}
+/* extra fog banks — steel-mist, warm gold and soft white wisps spread
+   across the frame so the whole stage feels softly lit */
+.mist.m4 {
+  width:1500px; height:800px; left:22%; top:16%;
+  background: radial-gradient(ellipse, rgba(168,181,189,.15), transparent 62%);
+  animation: drift2 40s ease-in-out infinite alternate-reverse;
+}
+.mist.m5 {
+  width:820px; height:500px; right:5%; bottom:-180px;
+  background: radial-gradient(ellipse, rgba(240,220,140,.13), transparent 65%);
+  animation: drift1 26s ease-in-out infinite alternate;
+  animation-delay: -12s;
+}
+.mist.m6 {
+  width:720px; height:380px; left:-150px; top:10%;
+  background: radial-gradient(ellipse, rgba(247,244,236,.14), transparent 65%);
+  animation: drift2 31s ease-in-out infinite alternate;
+  animation-delay: -8s;
 }
 @keyframes drift1 { from { transform: translate(0,0) scale(1);}    to { transform: translate(250px,-70px) scale(1.12);} }
 @keyframes drift2 { from { transform: translate(0,0) scale(1);}    to { transform: translate(-220px,-90px) scale(1.15);} }
@@ -124,6 +149,23 @@ img { max-width:100%; }
 @keyframes sheenSweep {
   0%        { transform: translateX(-130%); }
   26%, 100% { transform: translateX(130%); }
+}
+/* a fainter, cooler beam answers back the other way, offset by half a
+   cycle — so the stage catches light every ~6 seconds */
+.sheen.s2 {
+  background: linear-gradient(245deg,
+    transparent 0%, transparent 40%,
+    rgba(168,181,189,.06) 47%,
+    rgba(247,244,236,.11) 50%,
+    rgba(168,181,189,.06) 53%,
+    transparent 60%, transparent 100%);
+  transform: translateX(130%);
+  animation: sheenSweepBack 12s ease-in-out infinite;
+  animation-delay: -6s;
+}
+@keyframes sheenSweepBack {
+  0%        { transform: translateX(130%); }
+  26%, 100% { transform: translateX(-130%); }
 }
 
 .vignette {
@@ -1170,8 +1212,9 @@ function makeStage(host) {
   host.innerHTML = `
     <div class="stage">
       <div class="mist m1"></div><div class="mist m2"></div><div class="mist m3"></div>
+      <div class="mist m4"></div><div class="mist m5"></div><div class="mist m6"></div>
       <div class="spray"></div>
-      <div class="sheen"></div>
+      <div class="sheen"></div><div class="sheen s2"></div>
       <div class="vignette"></div>
       <div class="scene-slot" style="position:absolute;inset:0"></div>
       <div class="blackout"></div>
