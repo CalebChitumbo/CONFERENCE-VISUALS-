@@ -56,6 +56,21 @@ panel; search and filter by category.
 - First run loads a sample line-up so every scene demos immediately —
   delete the samples or **Clear ALL data** in Settings.
 
+## Presentations (PDF backups)
+
+The **Presentations** panel keeps speakers' slide decks safe on the operator
+machine. Click **＋ Upload PDF**, and each deck is stored in the browser's
+**IndexedDB** — it survives refreshing and closing the tab, so you can hand the
+original file back with **⬇ Download** even if the source (USB stick, e-mail,
+laptop) is no longer around. **Open** views a deck in a new tab; **✕** removes
+it from this browser.
+
+- Stored **per browser**, on this machine only — kept separate from the JSON
+  export so backups stay small, so PDFs do **not** travel with Export / Import.
+- If a browser blocks IndexedDB (e.g. a locked-down sandbox), uploads fall back
+  to memory for the current session and a notice says so — download anything
+  you want to keep.
+
 ## Logos
 
 The app looks for logos in this order:

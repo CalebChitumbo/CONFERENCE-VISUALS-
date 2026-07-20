@@ -448,6 +448,27 @@ body.mode-display.is-fs .disp-banner { display:none; }
 .icobtn.warn:hover { color:#B03030; border-color:#E8C5C5; }
 .pp-empty { padding:40px 20px; text-align:center; color:var(--cp-dim); font-size:14px; line-height:1.7; }
 
+/* Presentations (PDF library) */
+.pdf-note { font-size:12px; color:var(--cp-dim); padding:12px 18px 2px; line-height:1.55; }
+.pdf-note b { color:var(--cp-text); }
+.pdf-note.warn { color:#8A5A16; }
+.pdf-list { max-height:360px; overflow-y:auto; }
+.pdf-row {
+  display:flex; align-items:center; gap:13px; padding:11px 18px;
+  border-bottom:1px solid #EFEADD;
+}
+.pdf-row:hover { background:#FAF7EE; }
+.pdf-ico {
+  width:42px; height:42px; border-radius:8px; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  background:#F4E3E0; color:#B03030; border:1px solid #E7CBC6;
+  font-family:var(--font-mono); font-weight:600; font-size:11px; letter-spacing:.06em;
+}
+.pdf-info { flex:1; min-width:0; }
+.pdf-name { font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pdf-meta { font-size:12px; color:var(--cp-dim); margin-top:2px; }
+.pdf-actions { display:flex; gap:6px; align-items:center; flex:none; }
+
 /* Modal */
 .modal-veil {
   position:fixed; inset:0; background:rgba(26,27,29,.55); z-index:200;
@@ -1047,6 +1068,16 @@ function initControl() {
           <div class="scene-config" id="sceneConfig"></div>
         </div>
         <div class="cp-foot">“${esc(state.settings.theme)}”</div>
+
+        <div class="card" style="margin-top:22px">
+          <div class="card-h">
+            <span class="ttl">Presentations</span><span class="pp-count" id="pdfCount"></span>
+            <span style="flex:1"></span>
+            <button class="btn gold" id="btnUploadPdf">＋ Upload PDF</button>
+          </div>
+          <div class="pdf-note" id="pdfNote"></div>
+          <div class="pdf-list" id="pdfList"></div>
+        </div>
       </section>
 
       <section>
@@ -1064,6 +1095,7 @@ function initControl() {
       </section>
     </main>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <input type="file" id="pdfFile" accept="application/pdf,.pdf" multiple hidden>
   `;
 
   preview = makeStage($('#previewHost'));
@@ -1100,6 +1132,10 @@ function initControl() {
   $('#btnExport').onclick = exportJSON;
   $('#btnImport').onclick = () => $('#importFile').click();
   $('#importFile').onchange = importJSON;
+
+  /* presentation PDFs — saved in this browser (IndexedDB), downloadable later */
+  $('#btnUploadPdf').onclick = () => $('#pdfFile').click();
+  $('#pdfFile').onchange = (e) => { const files = [...e.target.files]; e.target.value = ''; handlePdfUpload(files); };
 
   /* quick logo uploads from the notice bar */
   $('#upConf').onclick = () => $('#fileConf').click();
@@ -1144,6 +1180,7 @@ function initControl() {
 
   ui.sceneTab = state.live.scene;
   renderAll(false);
+  renderPresentations();
 }
 
 function renderAll(remount = true) {
@@ -1548,6 +1585,170 @@ function openSettingsModal() {
 function initControlHeaderMark() {
   const mark = $('.hd-mark'); if (!mark) return;
   mark.innerHTML = state.assets.confLogo ? `<img src="${state.assets.confLogo}" alt="">` : `<span>8</span>`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   6b. PRESENTATIONS — PDF store (IndexedDB, this browser only)
+   Uploaded slide decks are kept in this browser's IndexedDB, kept apart
+   from the JSON export so the backup stays small. They survive a page
+   refresh and closing the tab, and can be downloaded back at any time —
+   a safety net if the original file is later lost. Falls back to an
+   in-memory store (this session only) where IndexedDB is unavailable,
+   mirroring the localStorage→memory degrade used elsewhere.
+   ════════════════════════════════════════════════════════════════ */
+const PDF_DB = 'rpo8-presentations', PDF_STORE = 'files';
+let _pdfMem = null, _pdfUsable = null;   // _pdfUsable: null=unknown, true=IndexedDB, false=memory only
+const pdfMem = () => _pdfMem || (_pdfMem = new Map());
+
+function pdfOpenDB() {
+  return new Promise((resolve, reject) => {
+    let req;
+    try { req = indexedDB.open(PDF_DB, 1); }
+    catch (e) { reject(e); return; }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(PDF_STORE)) db.createObjectStore(PDF_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess  = () => resolve(req.result);
+    req.onerror    = () => reject(req.error);
+    req.onblocked  = () => reject(new Error('blocked'));
+  });
+}
+async function pdfDB() {
+  if (_pdfUsable === false) return null;
+  try { const db = await pdfOpenDB(); _pdfUsable = true; return db; }
+  catch (e) { _pdfUsable = false; return null; }
+}
+const reqP   = r  => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const txDone = tx => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); });
+const pdfStripBlob = r => ({ id: r.id, name: r.name, size: r.size, type: r.type, uploadedAt: r.uploadedAt });
+
+async function pdfSave(rec) {
+  const db = await pdfDB();
+  if (!db) { pdfMem().set(rec.id, rec); return; }
+  const tx = db.transaction(PDF_STORE, 'readwrite');
+  tx.objectStore(PDF_STORE).put(rec);
+  await txDone(tx); db.close();
+}
+async function pdfListAll() {
+  const db = await pdfDB();
+  if (!db) return [...pdfMem().values()].map(pdfStripBlob);
+  const all = await reqP(db.transaction(PDF_STORE, 'readonly').objectStore(PDF_STORE).getAll());
+  db.close();
+  return all.map(pdfStripBlob);
+}
+async function pdfGet(id) {
+  const db = await pdfDB();
+  if (!db) return pdfMem().get(id) || null;
+  const rec = await reqP(db.transaction(PDF_STORE, 'readonly').objectStore(PDF_STORE).get(id));
+  db.close();
+  return rec || null;
+}
+async function pdfRemove(id) {
+  const db = await pdfDB();
+  if (!db) { pdfMem().delete(id); return; }
+  const tx = db.transaction(PDF_STORE, 'readwrite');
+  tx.objectStore(PDF_STORE).delete(id);
+  await txDone(tx); db.close();
+}
+
+const fmtBytes = n => {
+  if (n == null) return '';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB';
+};
+function fmtDate(ts) {
+  if (!ts) return '';
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date(ts);
+  return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function pdfSafeName(name) {
+  let n = (name || 'presentation').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'presentation';
+  if (!/\.pdf$/i.test(n)) n += '.pdf';
+  return n;
+}
+
+async function handlePdfUpload(fileList) {
+  const files = [...fileList].filter(f => f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
+  if (!files.length) { if (fileList.length) toast('⚠ Only PDF files can be added here'); return; }
+  let saved = 0, failed = 0;
+  for (const f of files) {
+    if (f.size > 200 * 1048576) { toast(`⚠ "${f.name}" is very large (${fmtBytes(f.size)}) and was skipped`); failed++; continue; }
+    try { await pdfSave({ id: uid(), name: f.name, size: f.size, type: f.type || 'application/pdf', uploadedAt: Date.now(), blob: f }); saved++; }
+    catch (e) { failed++; }
+  }
+  await renderPresentations();
+  if (saved) toast(`Saved ${saved} PDF${saved > 1 ? 's' : ''} in this browser${_pdfUsable === false ? ' (this session only)' : ''}`);
+  else if (failed) toast('⚠ Could not save that PDF — storage may be full');
+}
+
+async function pdfOpenInTab(id) {
+  const rec = await pdfGet(id);
+  if (!rec || !rec.blob) { toast('That file is no longer stored in this browser'); return; }
+  const url = URL.createObjectURL(rec.blob);
+  const w = window.open(url, '_blank');
+  if (!w) toast('Pop-up blocked — use ⬇ Download instead');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+async function pdfDownloadFile(id) {
+  const rec = await pdfGet(id);
+  if (!rec || !rec.blob) { toast('That file is no longer stored in this browser'); return; }
+  const url = URL.createObjectURL(rec.blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = pdfSafeName(rec.name);
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function renderPresentations() {
+  const list = $('#pdfList'); if (!list) return;
+  let items = [];
+  try { items = await pdfListAll(); } catch (e) { items = []; }
+  items.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+
+  const note = $('#pdfNote');
+  if (note) {
+    note.className = 'pdf-note' + (_pdfUsable === false ? ' warn' : '');
+    note.innerHTML = _pdfUsable === false
+      ? '⚠ This browser won\'t keep files after the tab is closed here, so uploads last for <b>this session only</b>. Download anything you want to keep.'
+      : 'Saved in <b>this browser only</b> — they survive refreshing and closing the tab, and are <b>not</b> in the JSON export. Use <b>⬇ Download</b> to get the original file back even if the source is gone.';
+  }
+  $('#pdfCount') && ($('#pdfCount').textContent = items.length ? `${items.length} saved` : '');
+
+  if (!items.length) {
+    list.innerHTML = `<div class="pp-empty">No presentations saved yet.<br>Click <b>＋ Upload PDF</b> to keep a speaker's slide deck safe in this browser.</div>`;
+    return;
+  }
+  list.innerHTML = items.map(f => `
+    <div class="pdf-row" data-id="${f.id}">
+      <div class="pdf-ico">PDF</div>
+      <div class="pdf-info">
+        <div class="pdf-name" title="${esc(f.name)}">${esc(f.name)}</div>
+        <div class="pdf-meta">${esc(fmtBytes(f.size))} · saved ${esc(fmtDate(f.uploadedAt))}</div>
+      </div>
+      <div class="pdf-actions">
+        <button class="btn sm" data-act="open" title="Open in a new tab">Open</button>
+        <button class="btn sm gold" data-act="download" title="Download the original PDF">⬇ Download</button>
+        <button class="icobtn warn" data-act="del" title="Remove from this browser">✕</button>
+      </div>
+    </div>`).join('');
+
+  $$('.pdf-row', list).forEach(row => {
+    const id = row.dataset.id;
+    row.querySelectorAll('[data-act]').forEach(btn => btn.onclick = async () => {
+      const act = btn.dataset.act;
+      if (act === 'open') pdfOpenInTab(id);
+      else if (act === 'download') pdfDownloadFile(id);
+      else if (act === 'del') {
+        const f = items.find(x => x.id === id);
+        if (confirm(`Remove "${f ? f.name : 'this file'}" from this browser? The original file elsewhere is not affected.`)) {
+          await pdfRemove(id); await renderPresentations(); toast('Removed from this browser');
+        }
+      }
+    });
+  });
 }
 
 /* ── Export / Import ──────────────────────────────────────────── */
