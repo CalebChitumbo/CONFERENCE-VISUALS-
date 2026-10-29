@@ -1,5 +1,11 @@
 # 8th RPO Conference — Live Display & Control App
 
+> **Editions:** this root `index.html` is the **Medical Facilities** edition
+> (July 2026), kept as it was used. The **Non-Medical Facilities** edition
+> (3–6 November 2026), with its own seal, line-up, programme and the upgraded
+> scenes (Agenda, live info bar, holding loop, offline fonts), is in
+> [`non-medical/`](non-medical/README.md).
+
 A single self-contained web app (`index.html`) that drives the projector at the
 **8th Annual RPO Conference for Medical Facilities**
 (14–17 July 2026 · David Livingstone Safari Lodge · Livingstone, Zambia),
